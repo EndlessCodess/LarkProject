@@ -1,0 +1,14 @@
+{
+  "name": "lark-context-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Direction-3 MVP: CLI context-aware knowledge distribution agent",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.js",
+    "demo": "node src/main.js --source examples/events.jsonl --knowledge config/knowledge.example.json"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
