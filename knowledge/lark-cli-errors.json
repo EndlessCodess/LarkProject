@@ -1,0 +1,157 @@
+{
+  "version": "0.1.0",
+  "description": "Structured knowledge rules for common lark-cli/OpenClaw error scenarios.",
+  "items": [
+    {
+      "id": "scope-missing-user",
+      "category": "permission_scope",
+      "severity": "warning",
+      "priority": 100,
+      "when": ["permission denied", "permission_violations", "missing scope", "scope required"],
+      "diagnosis": "当前身份缺少调用该接口或命令所需的 scope。需要先区分 user 身份和 bot 身份，再选择修复方式。",
+      "route_to_skills": ["lark-shared"],
+      "suggested_actions": [
+        "从错误响应中的 permission_violations 或 missing scope 字段提取缺失 scope。",
+        "如果当前是 user 身份，执行 lark-cli auth login --scope \"<missing_scope>\" 进行增量授权。",
+        "如果当前是 bot 身份，不要执行 auth login；需要到飞书开发者后台为应用开通对应 scope。",
+        "授权完成后再重试原命令。"
+      ],
+      "next_command_template": "lark-cli auth login --scope \"<missing_scope>\"",
+      "source": "../lark-shared/SKILL.md#权限不足处理"
+    },
+    {
+      "id": "base-wiki-token-confusion",
+      "category": "token_type",
+      "severity": "error",
+      "priority": 95,
+      "when": ["base_token invalid", "param baseToken is invalid", "/wiki/", "wiki_token", "obj_token"],
+      "diagnosis": "很可能把 Wiki 链接中的 wiki_token 当成了 Base 的 base_token。Wiki 节点需要先解析 obj_token，再根据 obj_type 路由到对应业务域。",
+      "route_to_skills": ["lark-wiki", "lark-base"],
+      "suggested_actions": [
+        "如果输入来自 /wiki/<token> 链接，先用 wiki 节点查询解析真实资源。",
+        "读取返回的 node.obj_type 与 node.obj_token。",
+        "当 obj_type=bitable 时，使用 node.obj_token 作为 lark-cli base +... 的 --base-token。",
+        "不要把完整 URL、wiki_token 或 table_id 直接当作 base_token。"
+      ],
+      "next_command_template": "lark-cli wiki get-node --token <wiki_token> --as user",
+      "source": "../lark-base/SKILL.md#Token 与链接; ../lark-wiki/SKILL.md#快速决策"
+    },
+    {
+      "id": "docs-v2-api-version-required",
+      "category": "docs_api_version",
+      "severity": "warning",
+      "priority": 70,
+      "when": ["api version is required", "api version not supported", "please use --api-version v2", "--api-version v2"],
+      "diagnosis": "docs v2 Skill 要求 docs +fetch、docs +create、docs +update 命令必须显式携带 --api-version v2。",
+      "route_to_skills": ["lark-doc"],
+      "suggested_actions": [
+        "对 docs +fetch / +create / +update 补充 --api-version v2。",
+        "读取文档前按 lark-doc 规则选择 detail/scope；创建或编辑内容前确认 XML 或 Markdown 格式。",
+        "如果是局部精准编辑，优先使用 XML 格式。"
+      ],
+      "next_command_template": "lark-cli docs +fetch --api-version v2 --doc \"<doc_url_or_token>\"",
+      "source": "../lark-doc/SKILL.md#docs-v2"
+    },
+    {
+      "id": "raw-api-param-body-split",
+      "category": "schema_params_data",
+      "severity": "error",
+      "priority": 90,
+      "when": ["invalid params", "missing required parameter", "wrong data structure", "requestBody", "parameters", "--params", "--data"],
+      "diagnosis": "原生 API 参数结构可能放错位置。schema 中 parameters 字段应放入 --params，requestBody 字段应放入 --data。",
+      "route_to_skills": ["lark-shared"],
+      "suggested_actions": [
+        "先确认这是原生 API 还是 shortcut。",
+        "如果是原生 API，执行 lark-cli schema <service.resource.method> 查看参数结构。",
+        "schema 中有 location 的 parameters 字段统一放入 --params。",
+        "schema 中 requestBody 下的字段放入 --data。",
+        "不要凭自然语言猜字段名或 JSON 结构。"
+      ],
+      "next_command_template": "lark-cli schema <service.resource.method>",
+      "source": "../lark-shared/SKILL.md; 各 lark-* Skill 的 API Resources 规则"
+    },
+    {
+      "id": "shortcut-help-required",
+      "category": "shortcut_usage",
+      "severity": "info",
+      "priority": 30,
+      "when": ["unknown flag", "unknown command", "flag provided but not defined"],
+      "diagnosis": "Shortcut 不是原生 API，不一定能通过 schema 查询。应先查看对应命令的 --help 或 Skill reference。",
+      "route_to_skills": ["lark-doc", "lark-base", "lark-sheets", "lark-im", "lark-task"],
+      "suggested_actions": [
+        "执行 lark-cli <service> --help 确认可用 command。",
+        "执行 lark-cli <service> +<verb> --help 确认 shortcut 参数。",
+        "再根据对应 Skill 的 reference 组织命令。"
+      ],
+      "next_command_template": "lark-cli <service> +<verb> --help",
+      "source": "各 lark-* Skill 的 Shortcuts 章节"
+    },
+    {
+      "id": "docs-resource-access-or-wiki-link",
+      "category": "resource_access",
+      "severity": "warning",
+      "priority": 80,
+      "when": ["doc not found", "file not found", "access denied", "not exist", "not found", "you don't have access permission"],
+      "diagnosis": "资源不存在、当前身份无权限，或 Wiki 链接未解析为真实 obj_token。需要先确认资源类型、真实 token 和当前身份权限。",
+      "route_to_skills": ["lark-doc", "lark-drive", "lark-wiki", "lark-shared"],
+      "suggested_actions": [
+        "如果输入是 /wiki/<token>，先解析 Wiki 节点，确认 obj_type 与 obj_token。",
+        "如果是 docx/doc/sheets/base 直接链接，确认 token 是否来自正确 URL 段。",
+        "若返回 permission denied，按 lark-shared 的 user/bot 权限流程处理。",
+        "不要把 wiki_token、file_token、base_token 混用。"
+      ],
+      "next_command_template": "lark-cli wiki get-node --token <wiki_token> --as user",
+      "source": "../lark-drive/SKILL.md#Wiki 链接特殊处理; ../lark-doc/SKILL.md#快速决策"
+    },
+    {
+      "id": "base-write-record-field-list-required",
+      "category": "base_record_write",
+      "severity": "warning",
+      "priority": 90,
+      "when": ["base +record-upsert", "record create", "record update", "1254015", "字段值类型不匹配", "ignored_fields", "READONLY"],
+      "diagnosis": "写入 Base 记录前必须先读取字段结构，只写可写的存储字段。系统字段、附件字段、formula、lookup 不能当普通字段写入。",
+      "route_to_skills": ["lark-base"],
+      "suggested_actions": [
+        "先执行 lark-cli base +field-list 获取真实字段名和字段类型。",
+        "按 lark-base-cell-value.md 构造不同字段类型的 CellValue。",
+        "移除系统字段、公式字段、lookup 字段和附件字段。",
+        "附件上传使用 +record-upload-attachment 专用链路。"
+      ],
+      "next_command_template": "lark-cli base +field-list --as user --base-token <base_token> --table-id <table_id>",
+      "source": "../lark-base/SKILL.md#Record 子模块; ../lark-base/references/lark-base-cell-value.md"
+    },
+    {
+      "id": "calendar-room-find-needs-time-slot",
+      "category": "calendar_room_workflow",
+      "severity": "warning",
+      "priority": 90,
+      "when": ["room-find", "查会议室", "找会议室", "recommend room", "no time", "模糊时间", "missing required time slot"],
+      "diagnosis": "查询可用会议室必须基于明确时间块。没有明确起止时间时，不能直接调用 +room-find，应先走 +suggestion 获取候选时间。",
+      "route_to_skills": ["lark-calendar"],
+      "suggested_actions": [
+        "先读取 lark-calendar-schedule-meeting.md 工作流。",
+        "如果时间明确且需要会议室，先 +room-find 再 +freebusy。",
+        "如果时间模糊或缺失，先 +suggestion，再基于候选时间批量查询会议室。",
+        "在创建日程前必须让用户确认候选方案。"
+      ],
+      "next_command_template": "lark-cli calendar +suggestion --help",
+      "source": "../lark-calendar/SKILL.md#预约日程/会议、查询/搜索可用会议室"
+    },
+    {
+      "id": "sheets-formula-object-required",
+      "category": "sheets_formula_write",
+      "severity": "info",
+      "priority": 85,
+      "when": ["wrote formula as plain text", "=SUM(", "formula as plain text", "公式被当作纯文本"],
+      "diagnosis": "飞书 Sheets 写入公式时不能直接传普通字符串，否则会被当作纯文本。公式、带文本链接、@人、@文档、下拉列表等需要使用对象格式。",
+      "route_to_skills": ["lark-sheets"],
+      "suggested_actions": [
+        "将公式单元格写成对象格式：{\"type\":\"formula\",\"text\":\"=SUM(A1:A3)\"}。",
+        "写入前确认目标 range 与 values 二维数组形状匹配。",
+        "涉及 ARRAYFORMULA、日期差、MAP/LAMBDA 等复杂公式时，先阅读 lark-sheets-formula.md。"
+      ],
+      "next_command_template": "lark-cli sheets +write --url <sheet_url> --range <range> --values '[[{\"type\":\"formula\",\"text\":\"=SUM(A1:A3)\"}]]'",
+      "source": "../lark-sheets/SKILL.md#单元格数据类型"
+    }
+  ]
+}

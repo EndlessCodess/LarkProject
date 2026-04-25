@@ -1,0 +1,16 @@
+{
+  "knowledgeSource": "local",
+  "local": {
+    "path": "knowledge/lark-cli-errors.json"
+  },
+  "larkDocs": {
+    "timeoutMs": 30000,
+    "docs": [
+      {
+        "id": "example-cloud-knowledge-doc",
+        "url": "TODO: 填入飞书云文档链接或 token",
+        "as": "user"
+      }
+    ]
+  }
+}

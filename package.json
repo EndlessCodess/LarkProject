@@ -2,11 +2,11 @@
   "name": "lark-context-agent",
   "version": "0.1.0",
   "private": true,
-  "description": "Direction-3 MVP: CLI context-aware knowledge distribution agent",
+  "description": "OpenClaw Skill-based CLI context knowledge distribution agent",
   "type": "module",
   "scripts": {
     "start": "node src/main.js",
-    "demo": "node src/main.js --source examples/events.jsonl --knowledge config/knowledge.example.json"
+    "demo": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json"
   },
   "engines": {
     "node": ">=18"

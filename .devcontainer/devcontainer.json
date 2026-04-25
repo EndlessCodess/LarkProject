@@ -1,0 +1,16 @@
+{
+  "name": "Lark Context Agent Dev",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspace/LarkProject",
+  "remoteUser": "node",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "node -v && npm -v && lark-cli --version || true"
+}

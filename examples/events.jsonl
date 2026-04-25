@@ -1,3 +1,0 @@
-{"type":"command_result","text":"npm run dev failed: ECONNREFUSED localhost:3000 while connecting to local service"}
-{"type":"error_log","text":"TypeError: Cannot read properties of undefined (reading 'user_id') in webhook handler"}
-{"type":"workflow","text":"Need to sync meeting action items into task list before EOD"}

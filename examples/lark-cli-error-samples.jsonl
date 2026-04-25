@@ -1,0 +1,8 @@
+{"type":"cli_error","text":"lark-cli docs +fetch --doc https://example.feishu.cn/docx/doxcnxxx failed: permission denied, missing scope: docs:document.comment:read"}
+{"type":"cli_error","text":"lark-cli base +table-list --base-token wikcnABC failed: param baseToken is invalid; original link is https://example.feishu.cn/wiki/wikcnABC"}
+{"type":"cli_error","text":"lark-cli docs +create --content '<title>Demo</title>' failed: api version is required, please use --api-version v2"}
+{"type":"cli_error","text":"lark-cli im messages send --params '{\"receive_id\":\"ou_xxx\"}' failed: invalid params: missing requestBody.content"}
+{"type":"cli_error","text":"lark-cli docs +fetch --api-version v2 --doc https://example.feishu.cn/wiki/wikcnXYZ failed: not exist or access denied"}
+{"type":"cli_error","text":"lark-cli base +record-upsert --base-token bascnxxx --table-id tblxxx --fields '{\"创建时间\":\"2026-01-01\"}' failed: ignored_fields READONLY"}
+{"type":"cli_error","text":"lark-cli calendar +room-find failed: missing required time slot; user only said find an available meeting room tomorrow afternoon"}
+{"type":"cli_error","text":"lark-cli sheets +write --url https://example.feishu.cn/sheets/shtxxx --values '[[\"=SUM(A1:A3)\"]]' wrote formula as plain text"}

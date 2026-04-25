@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_MAJOR: 22
+    image: lark-context-agent-dev:ubuntu24.04
+    container_name: lark-context-agent-dev
+    working_dir: /workspace/LarkProject
+    volumes:
+      - .:/workspace/LarkProject
+      - lark-cli-home:/home/node/.config/lark-cli
+    environment:
+      TZ: Asia/Shanghai
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    tty: true
+    stdin_open: true
+    command: bash
+
+volumes:
+  lark-cli-home:
