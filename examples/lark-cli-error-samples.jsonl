@@ -1,8 +1,64 @@
-{"type":"cli_error","text":"lark-cli docs +fetch --doc https://example.feishu.cn/docx/doxcnxxx failed: permission denied, missing scope: docs:document.comment:read"}
-{"type":"cli_error","text":"lark-cli base +table-list --base-token wikcnABC failed: param baseToken is invalid; original link is https://example.feishu.cn/wiki/wikcnABC"}
-{"type":"cli_error","text":"lark-cli docs +create --content '<title>Demo</title>' failed: api version is required, please use --api-version v2"}
-{"type":"cli_error","text":"lark-cli im messages send --params '{\"receive_id\":\"ou_xxx\"}' failed: invalid params: missing requestBody.content"}
-{"type":"cli_error","text":"lark-cli docs +fetch --api-version v2 --doc https://example.feishu.cn/wiki/wikcnXYZ failed: not exist or access denied"}
-{"type":"cli_error","text":"lark-cli base +record-upsert --base-token bascnxxx --table-id tblxxx --fields '{\"创建时间\":\"2026-01-01\"}' failed: ignored_fields READONLY"}
-{"type":"cli_error","text":"lark-cli calendar +room-find failed: missing required time slot; user only said find an available meeting room tomorrow afternoon"}
-{"type":"cli_error","text":"lark-cli sheets +write --url https://example.feishu.cn/sheets/shtxxx --values '[[\"=SUM(A1:A3)\"]]' wrote formula as plain text"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli docs +fetch failed: permission denied, missing scope: docs:document:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli calendar +agenda failed: permission_violations: calendar:calendar:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli task +get-my-tasks failed: scope required task:task:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli contact +search-user failed: unauthorized, missing scope: contact:user.base:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli drive +download failed: permission denied, missing scope: drive:drive:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli minutes +search failed: permission_violations: minutes:minute:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli vc +notes failed: scope required vc:meeting:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli mail +triage failed: permission denied, missing scope: mail:message:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli okr +cycle-list failed: missing scope: okr:okr:readonly"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"demo trigger: current user identity lacks docs read scope, please re-authorize before retrying docs +fetch"}
+{"type":"cli_error","expected_rule_id":"base-wiki-token-confusion","expected_status":"command_ok_auth_failed","text":"lark-cli base +table-list --base-token wikcnABC failed: param baseToken is invalid; original link is https://example.feishu.cn/wiki/wikcnABC"}
+{"type":"cli_error","expected_rule_id":"base-wiki-token-confusion","expected_status":"command_ok_auth_failed","text":"lark-cli base +field-list --base-token wikcnXYZ failed: base_token invalid; input came from /wiki/wikcnXYZ"}
+{"type":"cli_error","expected_rule_id":"base-wiki-token-confusion","expected_status":"command_ok_api_failed","text":"used wiki_token as --base-token for lark-cli base +table-list, API replied base_token invalid"}
+{"type":"cli_error","expected_rule_id":"base-wiki-token-confusion","expected_status":"command_ok_api_failed","text":"demo trigger: wiki link was passed directly to a base command, likely need wiki spaces get_node first"}
+{"type":"cli_error","expected_rule_id":"docs-v2-api-version-required","expected_status":"command_ok_help_returned","text":"lark-cli docs +fetch failed: api version is required, please use --api-version v2"}
+{"type":"cli_error","expected_rule_id":"docs-v2-api-version-required","expected_status":"command_ok_help_returned","text":"lark-cli docs +create --title \"Demo\" failed: api version not supported, please use --api-version v2"}
+{"type":"cli_error","expected_rule_id":"docs-v2-api-version-required","expected_status":"command_ok_help_returned","text":"lark-cli docs +create --markdown '# Hello' failed: please use --api-version v2"}
+{"type":"cli_error","expected_rule_id":"docs-v2-api-version-required","expected_status":"command_ok_help_returned","text":"demo trigger: docs command flag issue, inspect lark-cli docs +fetch --help first because api version is required"}
+{"type":"cli_error","expected_rule_id":"raw-api-param-body-split","expected_status":"command_ok_help_returned","text":"lark-cli im messages forward --params '{\"message_id\":\"om_xxx\",\"receive_id_type\":\"open_id\"}' failed: invalid params: missing requestBody.receive_id"}
+{"type":"cli_error","expected_rule_id":"raw-api-param-body-split","expected_status":"command_ok_help_returned","text":"lark-cli im messages forward --params '{\"message_id\":\"om_xxx\"}' --data '{}' failed: missing required parameter receive_id_type in query"}
+{"type":"cli_error","expected_rule_id":"raw-api-param-body-split","expected_status":"command_ok_help_returned","text":"schema shows receive_id_type in parameters and receive_id in requestBody, but command still put both into --params"}
+{"type":"cli_error","expected_rule_id":"raw-api-param-body-split","expected_status":"command_ok_help_returned","text":"demo trigger: raw api params/data split issue, inspect lark-cli im --help, lark-cli im messages --help, then lark-cli schema im.messages.forward"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli docs +fetch --api-version v2 failed: unknown flag: --api-version"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli base +table-list --query foo failed: flag provided but not defined: --query"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli sheets +write --doc xxx failed: unknown flag: --doc"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli task +get-my-tasks --table-id tblxxx failed: flag provided but not defined"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli drive +download --table-id tblxxx failed: unknown flag: --table-id"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli slides +create --table-id tblxxx failed: flag provided but not defined"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli whiteboard +query --message-id om_xxx failed: unknown flag: --message-id"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli vc +search --sheet-id shtxxx failed: unknown flag: --sheet-id"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli mail +triage --base-token bascn001 failed: flag provided but not defined: --base-token"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli okr +cycle-list --doc doxcn001 failed: unknown flag: --doc"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli minutes +search --table-id tbl001 failed: flag provided but not defined"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli contact +get-user --sheet-id sht001 failed: unknown flag: --sheet-id"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"demo trigger: this looks like a shortcut flag mismatch, inspect the exact +verb help instead of guessing flags"}
+{"type":"cli_error","expected_rule_id":"docs-resource-access-or-wiki-link","expected_status":"command_ok_resource_not_found","text":"lark-cli docs +fetch failed: not exist or access denied"}
+{"type":"cli_error","expected_rule_id":"docs-resource-access-or-wiki-link","expected_status":"command_ok_resource_not_found","text":"lark-cli drive files get failed: file not found"}
+{"type":"cli_error","expected_rule_id":"docs-resource-access-or-wiki-link","expected_status":"command_ok_auth_failed","text":"lark-cli docs +fetch --doc https://example.feishu.cn/wiki/wikcnNoAccess failed: you don't have access permission"}
+{"type":"cli_error","expected_rule_id":"docs-resource-access-or-wiki-link","expected_status":"command_ok_resource_not_found","text":"wiki link resolved but target resource not found after fetch"}
+{"type":"cli_error","expected_rule_id":"docs-resource-access-or-wiki-link","expected_status":"command_ok_resource_not_found","text":"lark-cli slides +create --wiki-node wikcn404 failed: not found"}
+{"type":"cli_error","expected_rule_id":"docs-resource-access-or-wiki-link","expected_status":"command_ok_resource_not_found","text":"lark-cli drive +download failed: access denied"}
+{"type":"cli_error","expected_rule_id":"base-write-record-field-list-required","expected_status":"command_ok_api_failed","text":"lark-cli base +record-upsert failed: ignored_fields READONLY"}
+{"type":"cli_error","expected_rule_id":"base-write-record-field-list-required","expected_status":"command_ok_api_failed","text":"lark-cli base +record-upsert failed: field value type mismatch 1254015"}
+{"type":"cli_error","expected_rule_id":"base-write-record-field-list-required","expected_status":"command_ok_api_failed","text":"lark-cli base +record-update failed: 字段值类型不匹配"}
+{"type":"cli_error","expected_rule_id":"base-write-record-field-list-required","expected_status":"command_ok_api_failed","text":"record create failed because formula field and lookup field were written as normal fields"}
+{"type":"cli_error","expected_rule_id":"calendar-room-find-needs-time-slot","expected_status":"command_ok_help_returned","text":"lark-cli calendar +room-find failed: missing required time slot"}
+{"type":"cli_error","expected_rule_id":"calendar-room-find-needs-time-slot","expected_status":"command_ok_help_returned","text":"find an available meeting room tomorrow afternoon, but no explicit slot was provided before running +room-find"}
+{"type":"cli_error","expected_rule_id":"calendar-room-find-needs-time-slot","expected_status":"command_ok_help_returned","text":"lark-cli calendar +room-find failed because slot is empty and user only gave a fuzzy time"}
+{"type":"cli_error","expected_rule_id":"calendar-room-find-needs-time-slot","expected_status":"command_ok_help_returned","text":"demo trigger: calendar room workflow unclear, inspect lark-cli calendar +suggestion --help before room-find"}
+{"type":"cli_error","expected_rule_id":"sheets-formula-object-required","expected_status":"command_ok_help_returned","text":"lark-cli sheets +write --values '[[\"=SUM(A1:A3)\"]]' wrote formula as plain text"}
+{"type":"cli_error","expected_rule_id":"sheets-formula-object-required","expected_status":"command_ok_help_returned","text":"formula as plain text: =SUM(A1:A3) was stored literally after sheets +write"}
+{"type":"cli_error","expected_rule_id":"sheets-formula-object-required","expected_status":"command_ok_help_returned","text":"lark-cli sheets +write wrote '=AVERAGE(B1:B3)' as plain text instead of formula object"}
+{"type":"cli_error","expected_rule_id":"sheets-formula-object-required","expected_status":"command_ok_help_returned","text":"demo trigger: sheets formula write issue, inspect lark-cli sheets +write --help before retrying formula object format"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_invalid","text":"lark-cli docz +fetch failed: unknown service"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli wiki spacez get_node failed: unknown command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli im chats foobar failed: no such command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_invalid","text":"lark-cli madeup +verb failed: command not found"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli approval +create failed: unknown command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli attendance +summary failed: unknown command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli whiteboard +create failed: unknown command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli event +watch failed: no such command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli minutes +query failed: unknown command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"lark-cli wiki +search failed: unknown command"}
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_ok_help_returned","text":"demo trigger: before using a guessed service.resource.method, confirm the command really exists with --help"}

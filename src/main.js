@@ -7,6 +7,17 @@ function parseArgs(argv) {
     knowledge: "knowledge/lark-cli-errors.json",
     docs: [],
     larkCliTimeoutMs: 30000,
+    autoReadonly: false,
+    debugLarkCli: false,
+    regressionFailuresFile: "tmp/regression-failures.json",
+    qualityReportFile: "tmp/rule-quality-report.json",
+    showQualityReport: true,
+    pushLarkCard: false,
+    pushChatId: "",
+    pushAs: "bot",
+    pushLevel: "high_only",
+    pushDedupeTtlMs: 600000,
+    pushDedupeFile: "tmp/push-dedupe-state.json",
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -26,6 +37,18 @@ function parseArgs(argv) {
     } else if (key === "--lark-doc-as" && value) {
       ensureLastDoc(args).as = argv[++i];
     } else if (key === "--lark-cli-timeout-ms" && value) args.larkCliTimeoutMs = Number(argv[++i]);
+    else if (key === "--auto-readonly") args.autoReadonly = true;
+    else if (key === "--debug-lark-cli") args.debugLarkCli = true;
+    else if (key === "--show-regression-summary") args.showRegressionSummary = true;
+    else if (key === "--regression-failures-file" && value) args.regressionFailuresFile = argv[++i];
+    else if (key === "--quality-report-file" && value) args.qualityReportFile = argv[++i];
+    else if (key === "--no-quality-report") args.showQualityReport = false;
+    else if (key === "--push-lark-card") args.pushLarkCard = true;
+    else if (key === "--push-chat-id" && value) args.pushChatId = argv[++i];
+    else if (key === "--push-as" && value) args.pushAs = argv[++i];
+    else if (key === "--push-level" && value) args.pushLevel = argv[++i];
+    else if (key === "--push-dedupe-ttl-ms" && value) args.pushDedupeTtlMs = Number(argv[++i]);
+    else if (key === "--push-dedupe-file" && value) args.pushDedupeFile = argv[++i];
   }
 
   return args;

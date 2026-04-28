@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/main.js",
-    "demo": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json"
+    "demo": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json",
+    "demo:auto": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json --auto-readonly --debug-lark-cli --lark-cli-timeout-ms 10000",
+    "demo:regression": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json --auto-readonly --debug-lark-cli --lark-cli-timeout-ms 10000 --show-regression-summary"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-04-28T14:42:47.233Z",
+  "totals": {
+    "rules": 10,
+    "rulesWithHits": 10,
+    "zeroHitRules": 0,
+    "events": 64,
+    "matched": 64,
+    "unmatched": 0,
+    "assertionFailures": 5,
+    "ruleExpectationFailures": 7
+  },
+  "topRules": [
+    {
+      "ruleId": "command-existence-check-first",
+      "hits": 18,
+      "category": "command_existence"
+    },
+    {
+      "ruleId": "scope-missing-user",
+      "hits": 10,
+      "category": "permission_scope"
+    },
+    {
+      "ruleId": "shortcut-help-required",
+      "hits": 6,
+      "category": "shortcut_usage"
+    },
+    {
+      "ruleId": "docs-resource-access-or-wiki-link",
+      "hits": 6,
+      "category": "resource_access"
+    },
+    {
+      "ruleId": "base-wiki-token-confusion",
+      "hits": 4,
+      "category": "token_type"
+    },
+    {
+      "ruleId": "docs-v2-api-version-required",
+      "hits": 4,
+      "category": "docs_api_version"
+    },
+    {
+      "ruleId": "raw-api-param-body-split",
+      "hits": 4,
+      "category": "schema_params_data"
+    },
+    {
+      "ruleId": "base-write-record-field-list-required",
+      "hits": 4,
+      "category": "base_record_write"
+    }
+  ],
+  "zeroHitRules": [],
+  "unmatchedSamples": [],
+  "ruleExpectationMismatchTop": [
+    {
+      "pair": "shortcut-help-required=>command-existence-check-first",
+      "count": 7
+    }
+  ],
+  "failureDetailsFile": "/workspace/LarkProject/tmp/regression-failures.json"
+}

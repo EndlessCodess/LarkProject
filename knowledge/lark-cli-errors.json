@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Structured knowledge rules for common lark-cli/OpenClaw error scenarios.",
   "items": [
     {
@@ -7,7 +7,15 @@
       "category": "permission_scope",
       "severity": "warning",
       "priority": 100,
-      "when": ["permission denied", "permission_violations", "missing scope", "scope required"],
+      "when": [
+        "permission denied",
+        "permission_violations",
+        "missing scope",
+        "scope required",
+        "lacks docs read scope",
+        "re-authorize before retrying",
+        "lacks read scope"
+      ],
       "diagnosis": "当前身份缺少调用该接口或命令所需的 scope。需要先区分 user 身份和 bot 身份，再选择修复方式。",
       "route_to_skills": ["lark-shared"],
       "suggested_actions": [
@@ -17,6 +25,14 @@
         "授权完成后再重试原命令。"
       ],
       "next_command_template": "lark-cli auth login --scope \"<missing_scope>\"",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "manual_auth",
+        "readonly": false,
+        "requires_confirmation": true,
+        "command_template": "lark-cli auth login --scope \"<missing_scope>\"",
+        "reason": "auth login 会触发用户授权流程，需要用户交互确认后执行。"
+      },
       "source": "../lark-shared/SKILL.md#权限不足处理"
     },
     {
@@ -24,7 +40,15 @@
       "category": "token_type",
       "severity": "error",
       "priority": 95,
-      "when": ["base_token invalid", "param baseToken is invalid", "/wiki/", "wiki_token", "obj_token"],
+      "when": [
+        "base_token invalid",
+        "param baseToken is invalid",
+        "wiki_token",
+        "obj_token",
+        "wiki link was passed directly",
+        "passed directly to a base command",
+        "resolve obj_token first"
+      ],
       "diagnosis": "很可能把 Wiki 链接中的 wiki_token 当成了 Base 的 base_token。Wiki 节点需要先解析 obj_token，再根据 obj_type 路由到对应业务域。",
       "route_to_skills": ["lark-wiki", "lark-base"],
       "suggested_actions": [
@@ -33,7 +57,15 @@
         "当 obj_type=bitable 时，使用 node.obj_token 作为 lark-cli base +... 的 --base-token。",
         "不要把完整 URL、wiki_token 或 table_id 直接当作 base_token。"
       ],
-      "next_command_template": "lark-cli wiki get-node --token <wiki_token> --as user",
+      "next_command_template": "lark-cli wiki spaces get_node --params '{\"token\":\"<wiki_token>\"}' --as user",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_check",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli wiki spaces get_node --params '{\"token\":\"<wiki_token>\"}' --as user --format json",
+        "reason": "解析 Wiki 节点是只读操作，可确认真实 obj_type 与 obj_token。"
+      },
       "source": "../lark-base/SKILL.md#Token 与链接; ../lark-wiki/SKILL.md#快速决策"
     },
     {
@@ -42,32 +74,61 @@
       "severity": "warning",
       "priority": 70,
       "when": ["api version is required", "api version not supported", "please use --api-version v2", "--api-version v2"],
-      "diagnosis": "docs v2 Skill 要求 docs +fetch、docs +create、docs +update 命令必须显式携带 --api-version v2。",
+      "diagnosis": "docs v2 Skill 要求 docs +fetch、docs +create、docs +update 命令必须显式携带 --api-version v2，但实际 CLI 版本可能存在参数差异，应以当前环境的 help 输出为准。",
       "route_to_skills": ["lark-doc"],
       "suggested_actions": [
-        "对 docs +fetch / +create / +update 补充 --api-version v2。",
-        "读取文档前按 lark-doc 规则选择 detail/scope；创建或编辑内容前确认 XML 或 Markdown 格式。",
-        "如果是局部精准编辑，优先使用 XML 格式。"
+        "先执行 lark-cli docs +fetch --help 确认当前版本支持的参数。",
+        "若当前 CLI 支持 --api-version v2，则对 docs +fetch / +create / +update 补充该参数。",
+        "若当前 CLI 不支持 --api-version，则以真实 help 输出为准构造命令。"
       ],
-      "next_command_template": "lark-cli docs +fetch --api-version v2 --doc \"<doc_url_or_token>\"",
-      "source": "../lark-doc/SKILL.md#docs-v2"
+      "next_command_template": "lark-cli docs +fetch --help",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_help",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli docs +fetch --help",
+        "reason": "查看 help 是只读操作，可确认当前环境真实支持的 docs +fetch 参数。"
+      },
+      "source": "../lark-doc/SKILL.md#docs-v2; 当前 CLI help 实测"
     },
     {
       "id": "raw-api-param-body-split",
       "category": "schema_params_data",
       "severity": "error",
       "priority": 90,
-      "when": ["invalid params", "missing required parameter", "wrong data structure", "requestBody", "parameters", "--params", "--data"],
-      "diagnosis": "原生 API 参数结构可能放错位置。schema 中 parameters 字段应放入 --params，requestBody 字段应放入 --data。",
+      "when": [
+        "invalid params",
+        "missing required parameter",
+        "wrong data structure",
+        "requestBody",
+        "parameters",
+        "--params",
+        "--data",
+        "params/data split issue",
+        "put both into --params"
+      ],
+      "diagnosis": "原生 API 参数结构可能放错位置。对原生命令，先确认 service / resource / method 是否真实存在；然后再用 schema 查看 parameters 与 requestBody 的归属。shortcut 则优先查看 --help。",
       "route_to_skills": ["lark-shared"],
       "suggested_actions": [
-        "先确认这是原生 API 还是 shortcut。",
-        "如果是原生 API，执行 lark-cli schema <service.resource.method> 查看参数结构。",
+        "先确认这是原生命令还是 shortcut。原生命令形如 lark-cli <service> <resource> <method>；shortcut 形如 lark-cli <service> +<verb>。",
+        "如果是原生命令，先执行 lark-cli <service> --help，确认该 resource 真实存在。",
+        "再执行 lark-cli <service> <resource> --help，确认该 method 真实存在。",
+        "确认存在后，优先执行 lark-cli schema <service.resource>；必要时再执行 lark-cli schema <service.resource.method>。",
         "schema 中有 location 的 parameters 字段统一放入 --params。",
         "schema 中 requestBody 下的字段放入 --data。",
-        "不要凭自然语言猜字段名或 JSON 结构。"
+        "如果是 shortcut，不要直接查 schema，先执行对应的 --help 并结合 skill reference。",
+        "不要凭自然语言猜字段名、JSON 结构或 schema 路径。"
       ],
-      "next_command_template": "lark-cli schema <service.resource.method>",
+      "next_command_template": "lark-cli <service> --help",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_help",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli <service> --help",
+        "reason": "先确认 service / resource / method 是否存在，再决定使用哪一级 schema，避免拼出不存在的 schema 路径。"
+      },
       "source": "../lark-shared/SKILL.md; 各 lark-* Skill 的 API Resources 规则"
     },
     {
@@ -75,7 +136,14 @@
       "category": "shortcut_usage",
       "severity": "info",
       "priority": 30,
-      "when": ["unknown flag", "unknown command", "flag provided but not defined"],
+      "when": [
+        "unknown flag",
+        "unknown command",
+        "flag provided but not defined",
+        "shortcut flag mismatch",
+        "exact +verb help",
+        "guessing flags"
+      ],
       "diagnosis": "Shortcut 不是原生 API，不一定能通过 schema 查询。应先查看对应命令的 --help 或 Skill reference。",
       "route_to_skills": ["lark-doc", "lark-base", "lark-sheets", "lark-im", "lark-task"],
       "suggested_actions": [
@@ -84,6 +152,14 @@
         "再根据对应 Skill 的 reference 组织命令。"
       ],
       "next_command_template": "lark-cli <service> +<verb> --help",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_help",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli <service> +<verb> --help",
+        "reason": "help 查询是只读操作，可确认当前 CLI 版本真实支持的 shortcut 参数。"
+      },
       "source": "各 lark-* Skill 的 Shortcuts 章节"
     },
     {
@@ -100,7 +176,15 @@
         "若返回 permission denied，按 lark-shared 的 user/bot 权限流程处理。",
         "不要把 wiki_token、file_token、base_token 混用。"
       ],
-      "next_command_template": "lark-cli wiki get-node --token <wiki_token> --as user",
+      "next_command_template": "lark-cli wiki spaces get_node --params '{\"token\":\"<wiki_token>\"}' --as user",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_check",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli wiki spaces get_node --params '{\"token\":\"<wiki_token>\"}' --as user --format json",
+        "reason": "Wiki 节点解析是只读操作，可确认链接背后的真实资源类型。"
+      },
       "source": "../lark-drive/SKILL.md#Wiki 链接特殊处理; ../lark-doc/SKILL.md#快速决策"
     },
     {
@@ -118,6 +202,14 @@
         "附件上传使用 +record-upload-attachment 专用链路。"
       ],
       "next_command_template": "lark-cli base +field-list --as user --base-token <base_token> --table-id <table_id>",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_check",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli base +field-list --as user --base-token <base_token> --table-id <table_id> --format json",
+        "reason": "字段结构查询是只读操作，可确认哪些字段可写以及字段值类型。"
+      },
       "source": "../lark-base/SKILL.md#Record 子模块; ../lark-base/references/lark-base-cell-value.md"
     },
     {
@@ -125,7 +217,15 @@
       "category": "calendar_room_workflow",
       "severity": "warning",
       "priority": 90,
-      "when": ["room-find", "查会议室", "找会议室", "recommend room", "no time", "模糊时间", "missing required time slot"],
+      "when": [
+        "room-find",
+        "查会议室",
+        "找会议室",
+        "recommend room",
+        "no time",
+        "模糊时间",
+        "missing required time slot"
+      ],
       "diagnosis": "查询可用会议室必须基于明确时间块。没有明确起止时间时，不能直接调用 +room-find，应先走 +suggestion 获取候选时间。",
       "route_to_skills": ["lark-calendar"],
       "suggested_actions": [
@@ -135,6 +235,14 @@
         "在创建日程前必须让用户确认候选方案。"
       ],
       "next_command_template": "lark-cli calendar +suggestion --help",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_help",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli calendar +suggestion --help",
+        "reason": "先查看 suggestion shortcut 参数，避免在无明确时间块时错误调用 room-find。"
+      },
       "source": "../lark-calendar/SKILL.md#预约日程/会议、查询/搜索可用会议室"
     },
     {
@@ -142,7 +250,15 @@
       "category": "sheets_formula_write",
       "severity": "info",
       "priority": 85,
-      "when": ["wrote formula as plain text", "=SUM(", "formula as plain text", "公式被当作纯文本"],
+      "when": [
+        "wrote formula as plain text",
+        "=SUM(",
+        "=AVERAGE(",
+        "formula as plain text",
+        "公式被当作纯文本",
+        "instead of formula object",
+        "sheets formula write issue"
+      ],
       "diagnosis": "飞书 Sheets 写入公式时不能直接传普通字符串，否则会被当作纯文本。公式、带文本链接、@人、@文档、下拉列表等需要使用对象格式。",
       "route_to_skills": ["lark-sheets"],
       "suggested_actions": [
@@ -151,7 +267,50 @@
         "涉及 ARRAYFORMULA、日期差、MAP/LAMBDA 等复杂公式时，先阅读 lark-sheets-formula.md。"
       ],
       "next_command_template": "lark-cli sheets +write --url <sheet_url> --range <range> --values '[[{\"type\":\"formula\",\"text\":\"=SUM(A1:A3)\"}]]'",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_help",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli sheets +write --help",
+        "reason": "help 查询是只读操作，可确认当前 CLI 对 +write 的 values 参数要求。"
+      },
       "source": "../lark-sheets/SKILL.md#单元格数据类型"
+    },
+    {
+      "id": "command-existence-check-first",
+      "category": "command_existence",
+      "severity": "error",
+      "priority": 92,
+      "when": [
+        "unknown service",
+        "unknown command",
+        "command not found",
+        "no such command",
+        "unknown flag",
+        "guessed service.resource.method",
+        "confirm the command really exists",
+        "with --help"
+      ],
+      "diagnosis": "当前命令、子命令或 flag 可能并不存在于本机安装的 lark-cli 版本中。应先逐级用 --help 确认 service、resource、method 或 shortcut 是否真实存在，再决定后续命令。",
+      "route_to_skills": ["lark-shared"],
+      "suggested_actions": [
+        "先执行 lark-cli <service> --help，确认 service 存在。",
+        "如果是原生命令，再执行 lark-cli <service> <resource> --help，确认 resource 与 method 存在。",
+        "如果是 shortcut，再执行 lark-cli <service> +<verb> --help，确认 shortcut 与 flags 存在。",
+        "只有在命令真实存在后，再继续调用 schema 或组织 --params / --data。",
+        "不要把 schema 路径、skill 名称或自然语言描述直接当成 CLI 命令。"
+      ],
+      "next_command_template": "lark-cli <service> --help",
+      "tool_plan": {
+        "tool": "lark-cli",
+        "mode": "readonly_help",
+        "readonly": true,
+        "requires_confirmation": false,
+        "command_template": "lark-cli <service> --help",
+        "reason": "逐级查看 help 是最稳妥的存在性检查，能避免执行不存在的 service、resource、method 或 shortcut。"
+      },
+      "source": "../lark-shared/SKILL.md; 当前 CLI help 实测"
     }
   ]
 }
