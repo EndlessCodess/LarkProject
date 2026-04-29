@@ -44,7 +44,7 @@
       },
       {
         "tag": "markdown",
-        "content": "**上下文（节选）**\n```\nlark-cli base +record-update failed: 字段值类型不匹配\n```"
+        "content": "**上下文（节选）**\n```\n@飞书 CLI 执行lark-cli base +record-update，告诉我字段值类型不匹配\n```"
       },
       {
         "tag": "markdown",

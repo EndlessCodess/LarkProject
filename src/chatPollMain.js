@@ -98,15 +98,45 @@ function normalizeMessageText(item) {
 
 function looksLikeCliError(text) {
   const normalized = String(text || "").toLowerCase();
-  return normalized.includes("lark-cli") && (
-    normalized.includes("failed") ||
-    normalized.includes("error") ||
-    normalized.includes("permission denied") ||
-    normalized.includes("unknown flag") ||
-    normalized.includes("unknown service") ||
-    normalized.includes("scope") ||
-    normalized.includes("invalid")
-  );
+  const hasCliMention = normalized.includes("lark-cli") || normalized.includes("飞书 cli") || normalized.includes("飞书cli");
+  if (!hasCliMention) return false;
+
+  const strongSignals = [
+    "failed",
+    "error",
+    "permission denied",
+    "unknown flag",
+    "unknown service",
+    "scope",
+    "invalid",
+    "字段值类型不匹配",
+    "字段类型不匹配",
+    "类型不匹配",
+    "readonly",
+    "ignored_fields",
+    "wiki_token",
+    "base_token",
+    "api version",
+    "not found",
+    "access denied",
+    "公式",
+    "meeting room",
+    "room-find",
+  ];
+
+  const intentSignals = [
+    "告诉我",
+    "怎么",
+    "如何",
+    "为什么",
+    "报错",
+    "执行",
+    "帮我",
+    "看下",
+    "看看",
+  ];
+
+  return strongSignals.some((signal) => normalized.includes(signal)) || intentSignals.some((signal) => normalized.includes(signal));
 }
 
 function toEvent(item) {
@@ -160,6 +190,9 @@ async function main() {
 
   console.log(`[chat-poll] fetched messages: ${messages.length}`);
   console.log(`[chat-poll] candidate error events: ${events.length}`);
+  if (events.length) {
+    console.log(`[chat-poll] first candidate: ${events[0].text.slice(0, 120)}`);
+  }
   console.log(`[chat-poll] knowledge rules: ${kb.items.length}`);
 
   let matchedCount = 0;
