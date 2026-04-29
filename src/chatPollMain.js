@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { runLarkCli } from "./adapters/lark-cli/runner.js";
 import { loadKnowledge } from "./core/knowledge/loadKnowledge.js";
 import { matchKnowledge } from "./core/matcher.js";
@@ -26,6 +28,10 @@ function parseArgs(argv) {
     sourceChatId: "",
     sourceChatAs: "bot",
     sourceChatLimit: 20,
+    sourceStateFile: "tmp/chat-poll-state.json",
+    sourceInitMode: "baseline",
+    watch: false,
+    intervalMs: 5000,
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -47,6 +53,10 @@ function parseArgs(argv) {
     else if (key === "--source-chat-id" && value) args.sourceChatId = argv[++i];
     else if (key === "--source-chat-as" && value) args.sourceChatAs = argv[++i];
     else if (key === "--source-chat-limit" && value) args.sourceChatLimit = Number(argv[++i]);
+    else if (key === "--source-state-file" && value) args.sourceStateFile = argv[++i];
+    else if (key === "--source-init-mode" && value) args.sourceInitMode = argv[++i];
+    else if (key === "--watch") args.watch = true;
+    else if (key === "--interval-ms" && value) args.intervalMs = Number(argv[++i]);
   }
 
   return args;
@@ -74,13 +84,93 @@ async function readChatMessages(options) {
   });
 
   const payload = safeParseJson(result.stdout);
-  return Array.isArray(payload?.items)
+  const messages = Array.isArray(payload?.items)
     ? payload.items
     : Array.isArray(payload?.data?.items)
       ? payload.data.items
       : Array.isArray(payload?.data?.messages)
         ? payload.data.messages
         : [];
+
+  return messages;
+}
+
+async function loadChatPollState(options) {
+  const stateFile = options.sourceStateFile;
+  if (!stateFile) return null;
+  try {
+    const raw = await fs.readFile(stateFile, "utf8");
+    return safeParseJson(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function saveChatPollState(options, state) {
+  const stateFile = options.sourceStateFile;
+  if (!stateFile) return;
+  await fs.mkdir(path.dirname(stateFile), { recursive: true });
+  await fs.writeFile(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+}
+
+function getMessageCursor(item) {
+  return String(item?.message_id || item?.messageId || "");
+}
+
+function pickLatestCursor(messages) {
+  for (const item of messages) {
+    const cursor = getMessageCursor(item);
+    if (cursor) return cursor;
+  }
+  return "";
+}
+
+function filterNewMessages(messages, state, options) {
+  const lastCursor = String(state?.lastMessageId || "");
+  if (!lastCursor) {
+    const initMode = String(options?.sourceInitMode || "baseline").toLowerCase();
+    return {
+      messages: initMode === "replay" ? [...messages].reverse() : [],
+      latestCursor: pickLatestCursor(messages),
+      baselineApplied: initMode !== "replay",
+    };
+  }
+
+  const collected = [];
+  for (const item of messages) {
+    const cursor = getMessageCursor(item);
+    if (cursor && cursor === lastCursor) break;
+    collected.push(item);
+  }
+
+  return {
+    messages: collected.reverse(),
+    latestCursor: pickLatestCursor(messages),
+    baselineApplied: false,
+  };
+}
+
+function getSenderId(item) {
+  return String(
+    item?.sender?.sender_id?.open_id ||
+    item?.sender?.id?.open_id ||
+    item?.sender?.open_id ||
+    item?.sender_id ||
+    ""
+  );
+}
+
+function isBotSelfMessage(item, options) {
+  if ((options?.pushAs || "").toLowerCase() !== "bot") return false;
+
+  const messageType = String(item?.msg_type || item?.message_type || "").toLowerCase();
+  const senderType = String(item?.sender?.sender_type || item?.sender?.type || "").toLowerCase();
+  const text = normalizeMessageText(item);
+
+  if (senderType === "app" || senderType === "bot") return true;
+  if (messageType === "interactive") return true;
+  if (text.startsWith("<card title=\"⚠️ CLI 主动知识卡") || text.startsWith("<card title='⚠️ CLI 主动知识卡")) return true;
+  return false;
 }
 
 function normalizeMessageText(item) {
@@ -139,7 +229,8 @@ function looksLikeCliError(text) {
   return strongSignals.some((signal) => normalized.includes(signal)) || intentSignals.some((signal) => normalized.includes(signal));
 }
 
-function toEvent(item) {
+function toEvent(item, options) {
+  if (isBotSelfMessage(item, options)) return null;
   const text = normalizeMessageText(item);
   if (!text || !looksLikeCliError(text)) return null;
   return {
@@ -149,6 +240,7 @@ function toEvent(item) {
     message_id: item?.message_id || item?.messageId || "",
     chat_id: item?.chat_id || item?.chatId || "",
     create_time: item?.create_time || item?.createTime || "",
+    sender_id: getSenderId(item),
   };
 }
 
@@ -179,17 +271,27 @@ async function maybePushLarkCard(payload, options, decision, context) {
   }
 }
 
-async function main() {
-  const options = parseArgs(process.argv);
-  if (!options.sourceChatId) {
-    throw new Error("缺少 --source-chat-id");
-  }
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  const [messages, kb] = await Promise.all([readChatMessages(options), loadKnowledge(options)]);
-  const events = messages.map(toEvent).filter(Boolean);
+async function runPollOnce(options) {
+  const [messages, kb, state] = await Promise.all([
+    readChatMessages(options),
+    loadKnowledge(options),
+    loadChatPollState(options),
+  ]);
+  const { messages: newMessages, latestCursor, baselineApplied } = filterNewMessages(messages, state, options);
+  const selfFilteredCount = newMessages.filter((item) => isBotSelfMessage(item, options)).length;
+  const events = newMessages.map((item) => toEvent(item, options)).filter(Boolean);
 
   console.log(`[chat-poll] fetched messages: ${messages.length}`);
+  console.log(`[chat-poll] new messages: ${newMessages.length}`);
+  console.log(`[chat-poll] self messages filtered: ${selfFilteredCount}`);
   console.log(`[chat-poll] candidate error events: ${events.length}`);
+  if (baselineApplied) {
+    console.log("[chat-poll] baseline mode: initialized cursor from latest message, skipped historical backlog.");
+  }
   if (events.length) {
     console.log(`[chat-poll] first candidate: ${events[0].text.slice(0, 120)}`);
   }
@@ -223,8 +325,43 @@ async function main() {
     if (pushResult.status === "sent") sentCount += 1;
   }
 
+  if (latestCursor) {
+    await saveChatPollState(options, {
+      chatId: options.sourceChatId,
+      identity: options.sourceChatAs,
+      lastMessageId: latestCursor,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
   console.log(`[chat-poll] matched events: ${matchedCount}`);
   console.log(`[chat-poll] sent cards: ${sentCount}`);
+}
+
+async function main() {
+  const options = parseArgs(process.argv);
+  if (!options.sourceChatId) {
+    throw new Error("缺少 --source-chat-id");
+  }
+
+  if (!options.watch) {
+    await runPollOnce(options);
+    return;
+  }
+
+  const intervalMs = Math.max(1000, Number(options.intervalMs || 5000));
+  console.log(`[chat-poll] watch mode started. interval=${intervalMs}ms`);
+
+  while (true) {
+    const startedAt = new Date().toISOString();
+    console.log(`[chat-poll] tick ${startedAt}`);
+    try {
+      await runPollOnce(options);
+    } catch (error) {
+      console.error(`[chat-poll] tick failed: ${error.message}`);
+    }
+    await sleep(intervalMs);
+  }
 }
 
 function safeParseJson(text) {

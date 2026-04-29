@@ -5,14 +5,14 @@
     "enable_forward": true
   },
   "header": {
-    "template": "orange",
+    "template": "red",
     "title": {
       "tag": "plain_text",
-      "content": "⚠️ CLI 主动知识卡 · 通用诊断"
+      "content": "🚨 CLI 主动知识卡 · 命令检查"
     },
     "subtitle": {
       "tag": "plain_text",
-      "content": "中优先级 · event_driven"
+      "content": "高优先级 · event_driven"
     }
   },
   "body": {
@@ -21,34 +21,38 @@
     "elements": [
       {
         "tag": "markdown",
-        "content": "**💡 通用 CLI 诊断**\n先确认命令、权限和上下文，再继续执行。"
+        "content": "**🔎 命令存在性检查**\n先确认命令/子命令/shortcut 真实存在，再继续执行。"
       },
       {
         "tag": "markdown",
-        "content": "**概览**\n- 风险：medium\n- 置信度：high\n- 状态：not_executed\n- 信号：`字段值类型不匹配`"
+        "content": "**概览**\n- 风险：low\n- 置信度：high\n- 状态：not_executed\n- 信号：`unknown flag`"
       },
       {
         "tag": "markdown",
-        "content": "**结论与处理**\n写入 Base 记录前必须先读取字段结构，只写可写的存储字段。系统字段、附件字段、formula、lookup 不能当普通字段写入。\n\n1. 先执行 lark-cli base +field-list 获取真实字段名和字段类型。\n2. 按 lark-base-cell-value.md 构造不同字段类型的 CellValue。\n3. 移除系统字段、公式字段、lookup 字段和附件字段。"
+        "content": "**🚨 优先处理**\n当前命令、子命令或 flag 可能并不存在于本机安装的 lark-cli 版本中。应先逐级用 --help 确认 service、reso..."
       },
       {
         "tag": "markdown",
-        "content": "**建议命令**\n```bash\nlark-cli base +field-list --as user --base-token <base_token> --table-id <table_id>\n```"
+        "content": "**结论与处理**\n当前命令、子命令或 flag 可能并不存在于本机安装的 lark-cli 版本中。应先逐级用 --help 确认 service、resource、method 或 shortcut 是否真实存在，再决定后续命令。\n\n1. 先执行 lark-cli <service> --help，确认 service 存在。\n2. 如果是原生命令，再执行 lark-cli <service> <resource> --help，确认 resource 与 method 存在。\n3. 如果是 shortcut，再执行 lark-cli <service> +<verb> --help，确认 shortcut 与 flags 存在。"
       },
       {
         "tag": "markdown",
-        "content": "**执行摘要**\n来自测试群轮询消息，当前仅做知识卡主动触发演示。"
+        "content": "**建议命令**\n```bash\nlark-cli <service> --help\n```"
+      },
+      {
+        "tag": "markdown",
+        "content": "**执行摘要**\n来自事件订阅监听消息，当前仅做知识卡主动触发演示。"
       },
       {
         "tag": "hr"
       },
       {
         "tag": "markdown",
-        "content": "**上下文（节选）**\n```\n@飞书 CLI 执行lark-cli base +record-update，告诉我字段值类型不匹配\n```"
+        "content": "**上下文（节选）**\n```\n@飞书 CLI lark-cli wiki显示我unknown flag\n```"
       },
       {
         "tag": "markdown",
-        "content": "Skill：lark-base | 模式：event_driven"
+        "content": "Skill：lark-shared | 模式：event_driven"
       }
     ]
   }

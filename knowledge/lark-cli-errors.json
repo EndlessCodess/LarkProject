@@ -14,7 +14,10 @@
         "scope required",
         "lacks docs read scope",
         "re-authorize before retrying",
-        "lacks read scope"
+        "lacks read scope",
+        "没权限",
+        "权限不足",
+        "缺少 scope"
       ],
       "diagnosis": "当前身份缺少调用该接口或命令所需的 scope。需要先区分 user 身份和 bot 身份，再选择修复方式。",
       "route_to_skills": ["lark-shared"],
@@ -73,7 +76,16 @@
       "category": "docs_api_version",
       "severity": "warning",
       "priority": 70,
-      "when": ["api version is required", "api version not supported", "please use --api-version v2", "--api-version v2"],
+      "when": [
+        "api version is required",
+        "api version not supported",
+        "please use --api-version v2",
+        "--api-version v2",
+        "docs +fetch 参数不对",
+        "docs 参数不对",
+        "docs 命令参数",
+        "unknown flag: --api-version"
+      ],
       "diagnosis": "docs v2 Skill 要求 docs +fetch、docs +create、docs +update 命令必须显式携带 --api-version v2，但实际 CLI 版本可能存在参数差异，应以当前环境的 help 输出为准。",
       "route_to_skills": ["lark-doc"],
       "suggested_actions": [
@@ -192,7 +204,7 @@
       "category": "base_record_write",
       "severity": "warning",
       "priority": 90,
-      "when": ["base +record-upsert", "record create", "record update", "1254015", "字段值类型不匹配", "ignored_fields", "READONLY"],
+      "when": ["base +record-upsert", "base +record-update", "record create", "record update", "1254015", "字段值类型不匹配", "字段类型不匹配", "类型不匹配", "ignored_fields", "READONLY", "告诉我字段类型不匹配", "帮我看字段类型不匹配"],
       "diagnosis": "写入 Base 记录前必须先读取字段结构，只写可写的存储字段。系统字段、附件字段、formula、lookup 不能当普通字段写入。",
       "route_to_skills": ["lark-base"],
       "suggested_actions": [

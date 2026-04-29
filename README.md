@@ -137,6 +137,8 @@ node "./src/chatPollMain.js" \
   --source-chat-id "oc_d32c2e3e2eb66b2efca3ef677620233e" \
   --source-chat-as user \
   --source-chat-limit 20 \
+  --source-state-file "tmp/chat-poll-state.json" \
+  --source-init-mode baseline \
   --push-lark-card \
   --push-chat-id "oc_d32c2e3e2eb66b2efca3ef677620233e" \
   --push-as bot \
@@ -145,14 +147,40 @@ node "./src/chatPollMain.js" \
 ```
 
 适合：
-- 从测试群最近消息中抓取 `lark-cli` 错误文本
+- 从测试群最近消息中抓取 `lark-cli` 错误文本或自然语言求助
 - 验证“群消息 -> 主动知识卡”最小闭环
 - 演示基于轮询的主动触发效果
 
 说明：
+- 当前最稳的测试组合是：`--source-chat-as user` 读取消息，`--push-as bot` 发送知识卡
+- 默认会使用本地 state 文件记录最近消费过的消息，只处理新的聊天消息
+- `--source-init-mode baseline` 首次运行时只建立游标，不回放历史消息；如果要回放最近消息可改成 `replay`
 - 当前是最小测试版，只做最近消息轮询
-- 仅筛选包含 `lark-cli` 且带明显错误特征的文本消息
+- 既支持标准错误文本，也支持带 `lark-cli` 上下文的自然语言求助消息
+- 目前已经验证：测试群消息可被读取并触发主动知识卡发送
 - 适合先验证触发效果，不替代后续正式事件订阅链路
+
+### 5. 持续轮询命令
+
+```bash
+node "./src/chatPollMain.js" \
+  --source-chat-id "oc_d32c2e3e2eb66b2efca3ef677620233e" \
+  --source-chat-as user \
+  --source-chat-limit 20 \
+  --source-state-file "tmp/chat-poll-state.json" \
+  --source-init-mode baseline \
+  --watch \
+  --interval-ms 5000 \
+  --push-lark-card \
+  --push-chat-id "oc_d32c2e3e2eb66b2efca3ef677620233e" \
+  --push-as bot
+```
+
+说明：
+- `--watch` 会持续轮询，不再是执行一次就退出
+- `--interval-ms 5000` 表示每 5 秒轮询一次
+- 当前已经会过滤 bot 自己发出的知识卡，避免持续轮询时自我触发
+- 如果只是做调试验证，可以临时加 `--push-bypass-policy --push-bypass-dedupe`
 
 ---
 
