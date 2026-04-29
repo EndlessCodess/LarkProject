@@ -1,63 +1,46 @@
 {
-  "generatedAt": "2026-04-28T14:42:47.233Z",
+  "generatedAt": "2026-04-28T17:59:56.847Z",
   "totals": {
     "rules": 10,
-    "rulesWithHits": 10,
-    "zeroHitRules": 0,
-    "events": 64,
-    "matched": 64,
+    "rulesWithHits": 3,
+    "zeroHitRules": 7,
+    "events": 4,
+    "matched": 4,
     "unmatched": 0,
-    "assertionFailures": 5,
-    "ruleExpectationFailures": 7
+    "assertionFailures": 2,
+    "ruleExpectationFailures": 1
   },
   "topRules": [
     {
       "ruleId": "command-existence-check-first",
-      "hits": 18,
+      "hits": 2,
       "category": "command_existence"
     },
     {
       "ruleId": "scope-missing-user",
-      "hits": 10,
+      "hits": 1,
       "category": "permission_scope"
     },
     {
-      "ruleId": "shortcut-help-required",
-      "hits": 6,
-      "category": "shortcut_usage"
-    },
-    {
-      "ruleId": "docs-resource-access-or-wiki-link",
-      "hits": 6,
-      "category": "resource_access"
-    },
-    {
       "ruleId": "base-wiki-token-confusion",
-      "hits": 4,
+      "hits": 1,
       "category": "token_type"
-    },
-    {
-      "ruleId": "docs-v2-api-version-required",
-      "hits": 4,
-      "category": "docs_api_version"
-    },
-    {
-      "ruleId": "raw-api-param-body-split",
-      "hits": 4,
-      "category": "schema_params_data"
-    },
-    {
-      "ruleId": "base-write-record-field-list-required",
-      "hits": 4,
-      "category": "base_record_write"
     }
   ],
-  "zeroHitRules": [],
+  "zeroHitRules": [
+    "base-write-record-field-list-required",
+    "calendar-room-find-needs-time-slot",
+    "docs-resource-access-or-wiki-link",
+    "docs-v2-api-version-required",
+    "raw-api-param-body-split",
+    "sheets-formula-object-required",
+    "shortcut-help-required"
+  ],
   "unmatchedSamples": [],
   "ruleExpectationMismatchTop": [
     {
       "pair": "shortcut-help-required=>command-existence-check-first",
-      "count": 7
+      "count": 1
     }
   ],
   "failureDetailsFile": "/workspace/LarkProject/tmp/regression-failures.json"

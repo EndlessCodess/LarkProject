@@ -18,6 +18,11 @@ function parseArgs(argv) {
     pushLevel: "high_only",
     pushDedupeTtlMs: 600000,
     pushDedupeFile: "tmp/push-dedupe-state.json",
+    pushBypassPolicy: false,
+    pushBypassDedupe: false,
+    sourceChatId: "",
+    sourceChatAs: "bot",
+    sourceChatLimit: 20,
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -49,6 +54,11 @@ function parseArgs(argv) {
     else if (key === "--push-level" && value) args.pushLevel = argv[++i];
     else if (key === "--push-dedupe-ttl-ms" && value) args.pushDedupeTtlMs = Number(argv[++i]);
     else if (key === "--push-dedupe-file" && value) args.pushDedupeFile = argv[++i];
+    else if (key === "--push-bypass-policy") args.pushBypassPolicy = true;
+    else if (key === "--push-bypass-dedupe") args.pushBypassDedupe = true;
+    else if (key === "--source-chat-id" && value) args.sourceChatId = argv[++i];
+    else if (key === "--source-chat-as" && value) args.sourceChatAs = argv[++i];
+    else if (key === "--source-chat-limit" && value) args.sourceChatLimit = Number(argv[++i]);
   }
 
   return args;

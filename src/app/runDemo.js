@@ -12,6 +12,7 @@ import { preflightLarkCliCommand, runLarkCli } from "../adapters/lark-cli/runner
 import { buildLarkCardPayload } from "../adapters/output/larkCardPayload.js";
 import { writeLarkCardArtifact } from "../adapters/output/writeLarkCardArtifact.js";
 import { sendLarkInteractiveCard } from "../adapters/output/sendLarkInteractiveCard.js";
+import { evaluatePushPolicy } from "../adapters/output/pushPolicy.js";
 import { renderTerminalCard, renderNoMatch } from "../adapters/output/terminalCard.js";
 
 export async function runDemo(options) {
@@ -47,7 +48,7 @@ export async function runDemo(options) {
     const effectiveStatus = inferEffectiveStatus(toolExecution?.status || "not_executed", toolExecution?.plannedStatus);
     const larkCardPayload = buildLarkCardPayload({ decision, action, outcome: { actualStatus: toolExecution?.status || "not_executed", effectiveStatus, summary: toolExecution?.summary || "No execution summary." }, context: event.text });
     const larkCardArtifactFile = await writeLarkCardArtifact(larkCardPayload, options);
-    const pushResult = await maybePushLarkCard(larkCardPayload, options);
+    const pushResult = await maybePushLarkCard(larkCardPayload, options, decision, event.text);
     const outcome = buildOutcome({
       decision,
       action,
@@ -67,13 +68,23 @@ export async function runDemo(options) {
   }
 }
 
-async function maybePushLarkCard(payload, options) {
+async function maybePushLarkCard(payload, options, decision, context) {
   if (!options.pushLarkCard) {
     return { status: "disabled", summary: "未开启飞书卡片推送。" };
   }
 
   if (!options.pushChatId) {
     return { status: "blocked", summary: "已开启飞书卡片推送，但缺少 --push-chat-id。" };
+  }
+
+  const policy = await evaluatePushPolicy({ decision, options, context });
+
+  if (!policy.shouldSend) {
+    return {
+      status: policy.policyStatus,
+      summary: policy.summary,
+      policy,
+    };
   }
 
   try {
@@ -88,11 +99,13 @@ async function maybePushLarkCard(payload, options) {
       status: "sent",
       summary: `已发送到飞书群 ${options.pushChatId}。`,
       transport: result,
+      policy,
     };
   } catch (error) {
     return {
       status: "failed",
       summary: error.message,
+      policy,
     };
   }
 }

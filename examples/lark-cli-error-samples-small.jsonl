@@ -1,0 +1,4 @@
+{"type":"cli_error","expected_rule_id":"command-existence-check-first","expected_status":"command_invalid","text":"lark-cli docz +fetch failed: unknown service"}
+{"type":"cli_error","expected_rule_id":"scope-missing-user","expected_status":"permission_required","text":"lark-cli docs +fetch failed: permission denied, missing scope: docs:document:readonly"}
+{"type":"cli_error","expected_rule_id":"base-wiki-token-confusion","expected_status":"command_ok_auth_failed","text":"lark-cli base +table-list --base-token wikcnABC failed: param baseToken is invalid; original link is https://example.feishu.cn/wiki/wikcnABC"}
+{"type":"cli_error","expected_rule_id":"shortcut-help-required","expected_status":"command_ok_help_returned","text":"lark-cli docs +fetch --api-version v2 failed: unknown flag: --api-version"}

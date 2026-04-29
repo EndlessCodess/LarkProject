@@ -16,6 +16,15 @@ export async function evaluatePushPolicy({ decision, options, context }) {
   const dedupeFile = resolve(options.pushDedupeFile || "tmp/push-dedupe-state.json");
   const dedupeTtlMs = Number(options.pushDedupeTtlMs || DEFAULT_TTL_MS);
 
+  if (options.pushBypassPolicy) {
+    return {
+      shouldSend: true,
+      policyStatus: "policy_bypassed",
+      summary: "调试模式：已跳过推送策略分级判断。",
+      dedupe: { key, ttlMs: dedupeTtlMs, file: dedupeFile },
+    };
+  }
+
   if (!isAllowedByLevel({ level, severity, riskLevel })) {
     return {
       shouldSend: false,
@@ -30,7 +39,7 @@ export async function evaluatePushPolicy({ decision, options, context }) {
   cleanupExpired(dedupeState, now);
   const previous = dedupeState[key];
 
-  if (previous && now - previous.sentAt < dedupeTtlMs) {
+  if (!options.pushBypassDedupe && previous && now - previous.sentAt < dedupeTtlMs) {
     const remainingMs = dedupeTtlMs - (now - previous.sentAt);
     return {
       shouldSend: false,
@@ -47,6 +56,8 @@ export async function evaluatePushPolicy({ decision, options, context }) {
     severity,
     riskLevel,
     chatId,
+    bypassPolicy: Boolean(options.pushBypassPolicy),
+    bypassDedupe: Boolean(options.pushBypassDedupe),
   };
   await persistDedupeState(dedupeFile, dedupeState);
 
