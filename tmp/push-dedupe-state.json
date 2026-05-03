@@ -1,6 +1,6 @@
 {
   "c1b8cebbdf6da51c4121434b90fa5c05686258f0": {
-    "sentAt": 1777481600428,
+    "sentAt": 1777742290313,
     "ruleId": "command-existence-check-first",
     "matchedSignal": "unknown flag",
     "severity": "error",
@@ -9,14 +9,24 @@
     "bypassPolicy": false,
     "bypassDedupe": false
   },
-  "a57d86d283005a1744450f8b076ad6b037f49a95": {
-    "sentAt": 1777478551901,
-    "ruleId": "command-existence-check-first",
-    "matchedSignal": "unknown flag",
-    "severity": "error",
-    "riskLevel": "low",
+  "6da06cfec2eb3beb81c83a388ad3b060333fee4f": {
+    "sentAt": 1777743584368,
+    "ruleId": "retrieved-home-node-agents-skills-lark-shared-skill-md-lark-shared-overview",
+    "matchedSignal": "retriever:lark-shared overview",
+    "severity": "info",
+    "riskLevel": "unknown",
     "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
     "bypassPolicy": false,
     "bypassDedupe": false
+  },
+  "6cfede3a14914695a86ac690bba9d68ff9e6b0c2": {
+    "sentAt": 1777819127347,
+    "ruleId": "retrieved-home-node-agents-skills-lark-im-skill-md-lark-im-shortcuts-推荐优先使用",
+    "matchedSignal": "retriever:lark-im Shortcuts（推荐优先使用）",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
   }
 }

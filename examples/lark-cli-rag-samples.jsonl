@@ -1,0 +1,6 @@
+{"type":"cli_error","text":"lark-cli 发消息到群聊时，receive_id_type 应该选 chat_id 还是 open_id？我想知道 IM 这类消息接口应该先看哪个 Skill。"}
+{"type":"cli_error","text":"lark-cli 操作 Base 写记录前，我不确定 lookup 字段、公式字段和普通字段能不能一起写，应该先检索哪份 Base 操作说明？"}
+{"type":"cli_error","text":"lark-cli 想把本地 xlsx 文件导入成多维表格，我不确定第一步应该走 base 还是 drive import。"}
+{"type":"cli_error","text":"lark-cli 处理文档内容时发现里面嵌了 sheet token，Agent 应该只展示文档块，还是继续下钻读取电子表格？"}
+{"type":"cli_error","text":"lark-cli 做会议室可用性相关操作，但用户只说了大概时间，没有给明确起止时间，我应该先参考哪个日历工作流？"}
+{"type":"cli_error","text":"lark-cli 遇到 user 和 bot 身份选择问题，不确定当前命令应该用用户身份还是机器人身份，应该先看哪类认证规则？"}

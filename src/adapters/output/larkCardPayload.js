@@ -99,6 +99,15 @@ function buildMetaLine(skills = [], mode = "event_driven") {
   return `Skill：${skills.length ? skills.join(", ") : "-"} | 模式：${mode}`;
 }
 
+function buildRetrievalBlock(retrieval) {
+  const results = retrieval?.results || [];
+  if (!results.length) return "";
+  return results
+    .slice(0, 3)
+    .map((item, index) => `${index + 1}. ${truncate(item.title, 48)}\n来源：${truncate(item.source, 72)}\n匹配：${item.matched_terms?.slice(0, 6).join(", ") || "-"} | score=${item.score}`)
+    .join("\n");
+}
+
 export function buildLarkCardPayload({ decision, outcome, context }) {
   const category = decision?.match?.category || "unknown";
   const categoryMeta = buildCategoryMeta(category);
@@ -114,6 +123,7 @@ export function buildLarkCardPayload({ decision, outcome, context }) {
   const summary = outcome?.summary || "No execution summary.";
   const severity = decision?.match?.severity || "unknown";
   const mode = decision?.trigger?.mode || "event_driven";
+  const retrievalBlock = buildRetrievalBlock(decision?.match?.retrieval);
 
   const elements = [
     {
@@ -144,6 +154,16 @@ export function buildLarkCardPayload({ decision, outcome, context }) {
       tag: "markdown",
       content: `**执行摘要**\n${truncate(summary, 120)}`,
     },
+  );
+
+  if (retrievalBlock) {
+    elements.push({
+      tag: "markdown",
+      content: `**召回证据**\n${retrievalBlock}`,
+    });
+  }
+
+  elements.push(
     {
       tag: "hr",
     },

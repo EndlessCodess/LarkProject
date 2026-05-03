@@ -5,14 +5,14 @@
     "enable_forward": true
   },
   "header": {
-    "template": "red",
+    "template": "blue",
     "title": {
       "tag": "plain_text",
-      "content": "🚨 CLI 主动知识卡 · 命令检查"
+      "content": "💡 CLI 主动知识卡 · 命令检查"
     },
     "subtitle": {
       "tag": "plain_text",
-      "content": "高优先级 · event_driven"
+      "content": "低优先级 · cli_watch"
     }
   },
   "body": {
@@ -25,34 +25,34 @@
       },
       {
         "tag": "markdown",
-        "content": "**概览**\n- 风险：low\n- 置信度：high\n- 状态：not_executed\n- 信号：`unknown flag`"
+        "content": "**概览**\n- 风险：unknown\n- 置信度：medium\n- 状态：not_executed\n- 信号：`retriever:lark-im Shortcuts（推荐优先使用）`"
       },
       {
         "tag": "markdown",
-        "content": "**🚨 优先处理**\n当前命令、子命令或 flag 可能并不存在于本机安装的 lark-cli 版本中。应先逐级用 --help 确认 service、reso..."
+        "content": "**结论与处理**\n结构化规则未直接命中，已从本地知识库召回相关内容：lark-im Shortcuts（推荐优先使用）。建议结合下方来源继续确认。\n\n1. 优先路由到 lark-im 的操作规则。\n2. 优先阅读召回来源中的相关段落，确认该问题属于哪个 lark-* Skill 或 CLI 命令族。\n3. 如果涉及真实命令参数，先用对应命令的 --help 或 schema 做只读确认，再继续执行。"
       },
       {
         "tag": "markdown",
-        "content": "**结论与处理**\n当前命令、子命令或 flag 可能并不存在于本机安装的 lark-cli 版本中。应先逐级用 --help 确认 service、resource、method 或 shortcut 是否真实存在，再决定后续命令。\n\n1. 先执行 lark-cli <service> --help，确认 service 存在。\n2. 如果是原生命令，再执行 lark-cli <service> <resource> --help，确认 resource 与 method 存在。\n3. 如果是 shortcut，再执行 lark-cli <service> +<verb> --help，确认 shortcut 与 flags 存在。"
+        "content": "**建议命令**\n```bash\nlark-cli im --help\n```"
       },
       {
         "tag": "markdown",
-        "content": "**建议命令**\n```bash\nlark-cli <service> --help\n```"
+        "content": "**执行摘要**\n来自 CLI 终端监听，已完成主动知识卡触发。"
       },
       {
         "tag": "markdown",
-        "content": "**执行摘要**\n来自事件订阅监听消息，当前仅做知识卡主动触发演示。"
+        "content": "**召回证据**\n1. lark-im Shortcuts（推荐优先使用）\n来源：/home/node/.agents/skills/lark-im/SKILL.md\n匹配：+chat-create, +chat-messages-list, +chat-search, +chat-update, +messages-mget, +messages-reply | score=59.6073\n2. lark-im Sender Name Resolution with Bot Identity\n来源：/home/node/.agents/skills/lark-im/SKILL.md\n匹配：+chat-messages-list, +messages-mget, +threads-messages-list, bot, e.g., identity | score=17.6414\n3. lark-im overview\n来源：/home/node/.agents/skills/lark-im/SKILL.md\n匹配：bot, chat, chat_id, conversation, file, group | score=14.7443"
       },
       {
         "tag": "hr"
       },
       {
         "tag": "markdown",
-        "content": "**上下文（节选）**\n```\n@飞书 CLI lark-cli wiki显示我unknown flag\n```"
+        "content": "**上下文（节选）**\n```\nterminal command: lark-cli im --help\nexit_code=0\nstdout:\nMessage and group chat management\nUsage:\n  lark-cli im [command]\nAvailable Comma...\n```"
       },
       {
         "tag": "markdown",
-        "content": "Skill：lark-shared | 模式：event_driven"
+        "content": "Skill：lark-im | 模式：cli_watch"
       }
     ]
   }

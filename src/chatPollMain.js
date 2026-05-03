@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { runLarkCli } from "./adapters/lark-cli/runner.js";
 import { loadKnowledge } from "./core/knowledge/loadKnowledge.js";
+import { buildKnowledgeRetriever, buildRetrievedKnowledgeRule, retrieveKnowledge } from "./core/knowledge/retriever.js";
 import { matchKnowledge } from "./core/matcher.js";
 import { buildToolPlan } from "./core/agent/toolPlanner.js";
 import { buildDecision } from "./core/agent/decisionEngine.js";
@@ -224,9 +225,22 @@ function looksLikeCliError(text) {
     "帮我",
     "看下",
     "看看",
+    "应该",
+    "怎么选",
+    "先看",
+    "参考",
+    "哪类",
+    "哪个",
+    "还是",
+    "是否",
+    "建议",
+    "规则",
+    "说明",
+    "流程",
+    "选哪",
   ];
 
-  return strongSignals.some((signal) => normalized.includes(signal)) || intentSignals.some((signal) => normalized.includes(signal));
+  return strongSignals.some((signal) => normalized.includes(signal)) || intentSignals.some((signal) => normalized.includes(signal)) || normalized.includes("?");
 }
 
 function toEvent(item, options) {
@@ -281,6 +295,7 @@ async function runPollOnce(options) {
     loadKnowledge(options),
     loadChatPollState(options),
   ]);
+  const retriever = await buildKnowledgeRetriever(options, kb);
   const { messages: newMessages, latestCursor, baselineApplied } = filterNewMessages(messages, state, options);
   const selfFilteredCount = newMessages.filter((item) => isBotSelfMessage(item, options)).length;
   const events = newMessages.map((item) => toEvent(item, options)).filter(Boolean);
@@ -296,14 +311,18 @@ async function runPollOnce(options) {
     console.log(`[chat-poll] first candidate: ${events[0].text.slice(0, 120)}`);
   }
   console.log(`[chat-poll] knowledge rules: ${kb.items.length}`);
+  console.log(`[chat-poll] retriever chunks: ${retriever.meta.chunkCount}`);
 
   let matchedCount = 0;
   let sentCount = 0;
 
   for (const event of events) {
-    const picked = matchKnowledge(event, kb.items);
+    const picked = pickKnowledge(event, kb.items, retriever);
     if (!picked) continue;
     matchedCount += 1;
+    if (picked._retrieval) {
+      console.log(`[chat-poll] ${event.message_id || "<no-message-id>"} -> retrieved ${picked._retrieval.results.length} knowledge chunk(s)`);
+    }
 
     const toolPlan = buildToolPlan(picked, event);
     const decision = buildDecision({ event, picked, toolPlan, options });
@@ -336,6 +355,14 @@ async function runPollOnce(options) {
 
   console.log(`[chat-poll] matched events: ${matchedCount}`);
   console.log(`[chat-poll] sent cards: ${sentCount}`);
+}
+
+function pickKnowledge(event, knowledgeItems, retriever) {
+  const direct = matchKnowledge(event, knowledgeItems);
+  if (direct) return direct;
+
+  const retrievalResults = retrieveKnowledge(event, retriever, { topK: 5 });
+  return buildRetrievedKnowledgeRule(event, retrievalResults);
 }
 
 async function main() {

@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { readJsonLines } from "../core/io.js";
 import { matchKnowledge } from "../core/matcher.js";
 import { loadKnowledge } from "../core/knowledge/loadKnowledge.js";
+import { buildKnowledgeRetriever, buildRetrievedKnowledgeRule, retrieveKnowledge } from "../core/knowledge/retriever.js";
 import { buildToolPlan } from "../core/agent/toolPlanner.js";
 import { interpretToolResult } from "../core/agent/resultInterpreter.js";
 import { buildDecision } from "../core/agent/decisionEngine.js";
@@ -17,15 +18,17 @@ import { renderTerminalCard, renderNoMatch } from "../adapters/output/terminalCa
 
 export async function runDemo(options) {
   const [events, kb] = await Promise.all([readJsonLines(options.source), loadKnowledge(options)]);
+  const retriever = await buildKnowledgeRetriever(options, kb);
   const regression = [];
 
   console.log(`Loaded ${events.length} events, ${kb.items.length} knowledge rules.`);
   console.log(`Knowledge source: ${kb.meta?.sourceType || options.knowledgeSource}`);
+  console.log(`Retriever chunks: ${retriever.meta.chunkCount}`);
   console.log(`Auto readonly execution: ${options.autoReadonly ? "enabled" : "disabled"}`);
   console.log(`Lark card push: ${options.pushLarkCard ? `enabled -> ${options.pushChatId || "<missing chat_id>"}` : "disabled"}\n`);
 
   for (const event of events) {
-    const picked = matchKnowledge(event, kb.items);
+    const picked = await pickKnowledge(event, kb.items, retriever);
 
     if (!picked) {
       renderNoMatch(event);
@@ -108,6 +111,14 @@ async function maybePushLarkCard(payload, options, decision, context) {
       policy,
     };
   }
+}
+
+async function pickKnowledge(event, knowledgeItems, retriever) {
+  const direct = matchKnowledge(event, knowledgeItems);
+  if (direct) return direct;
+
+  const retrievalResults = retrieveKnowledge(event, retriever, { topK: 5 });
+  return buildRetrievedKnowledgeRule(event, retrievalResults);
 }
 
 async function maybeExecuteToolPlan(toolPlan, options, picked) {

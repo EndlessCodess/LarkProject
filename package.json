@@ -10,7 +10,8 @@
     "demo:auto": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json --auto-readonly --debug-lark-cli --lark-cli-timeout-ms 10000",
     "demo:regression": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json --auto-readonly --debug-lark-cli --lark-cli-timeout-ms 10000 --show-regression-summary",
     "demo:chat-poll": "node src/chatPollMain.js",
-    "demo:chat-event": "node src/chatEventMain.js"
+    "demo:chat-event": "node src/chatEventMain.js",
+    "demo:cli-watch": "node src/cliWatchMain.js"
   },
   "engines": {
     "node": ">=18"

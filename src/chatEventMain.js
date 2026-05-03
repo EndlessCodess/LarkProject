@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { runLarkCli } from "./adapters/lark-cli/runner.js";
 import { loadKnowledge } from "./core/knowledge/loadKnowledge.js";
+import { buildKnowledgeRetriever, buildRetrievedKnowledgeRule, retrieveKnowledge } from "./core/knowledge/retriever.js";
 import { matchKnowledge } from "./core/matcher.js";
 import { buildToolPlan } from "./core/agent/toolPlanner.js";
 import { buildDecision } from "./core/agent/decisionEngine.js";
@@ -121,8 +122,31 @@ function looksLikeCliError(text) {
     "room-find",
   ];
 
-  const intentSignals = ["告诉我", "怎么", "如何", "为什么", "报错", "执行", "帮我", "看下", "看看"];
-  return strongSignals.some((signal) => normalized.includes(signal)) || intentSignals.some((signal) => normalized.includes(signal));
+  const intentSignals = [
+    "告诉我",
+    "怎么",
+    "如何",
+    "为什么",
+    "报错",
+    "执行",
+    "帮我",
+    "看下",
+    "看看",
+    "应该",
+    "怎么选",
+    "先看",
+    "参考",
+    "哪类",
+    "哪个",
+    "还是",
+    "是否",
+    "建议",
+    "规则",
+    "说明",
+    "流程",
+    "选哪",
+  ];
+  return strongSignals.some((signal) => normalized.includes(signal)) || intentSignals.some((signal) => normalized.includes(signal)) || normalized.includes("?");
 }
 
 function isBotSelfMessage(item, options) {
@@ -318,7 +342,7 @@ async function warnOnOtherSubscribers(options) {
   }
 }
 
-async function handleIncomingEvent(item, kb, options) {
+async function handleIncomingEvent(item, kb, retriever, options) {
   const resolvedChatId = item?.chat_id || item?.chatId || item?.message?.chat_id || options?.sourceChatId || "";
   const resolvedMessageId = getMessageId(item) || "<no-message-id>";
   const previewText = normalizeMessageText(item).slice(0, 120);
@@ -351,10 +375,14 @@ async function handleIncomingEvent(item, kb, options) {
 
   console.log(`[chat-event] candidate: ${event.message_id || "<no-message-id>"} ${event.text.slice(0, 120)}`);
 
-  const picked = matchKnowledge(event, kb.items);
+  const picked = pickKnowledge(event, kb.items, retriever);
   if (!picked) {
     console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> no knowledge matched`);
     return;
+  }
+
+  if (picked._retrieval) {
+    console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> retrieved ${picked._retrieval.results.length} knowledge chunk(s)`);
   }
 
   const toolPlan = buildToolPlan(picked, event);
@@ -376,7 +404,15 @@ async function handleIncomingEvent(item, kb, options) {
   console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> ${pushResult.status}: ${pushResult.summary}`);
 }
 
-async function startReconcilePolling(kb, options, seenMessageIds) {
+function pickKnowledge(event, knowledgeItems, retriever) {
+  const direct = matchKnowledge(event, knowledgeItems);
+  if (direct) return direct;
+
+  const retrievalResults = retrieveKnowledge(event, retriever, { topK: 5 });
+  return buildRetrievedKnowledgeRule(event, retrievalResults);
+}
+
+async function startReconcilePolling(kb, retriever, options, seenMessageIds) {
   if (!options.reconcilePoll) return null;
 
   const intervalMs = Math.max(1000, Number(options.reconcileIntervalMs || 5000));
@@ -417,7 +453,7 @@ async function startReconcilePolling(kb, options, seenMessageIds) {
 
     console.warn(`[chat-event][warn] reconcile found ${missed.length} message(s) not delivered by event stream`);
     for (const item of missed.reverse()) {
-      await handleIncomingEvent(item, kb, options);
+      await handleIncomingEvent(item, kb, retriever, options);
     }
   }
 
@@ -438,7 +474,9 @@ async function main() {
   if (!options.sourceChatId) throw new Error("缺少 --source-chat-id");
 
   const kb = await loadKnowledge(options);
+  const retriever = await buildKnowledgeRetriever(options, kb);
   console.log(`[chat-event] knowledge rules: ${kb.items.length}`);
+  console.log(`[chat-event] retriever chunks: ${retriever.meta.chunkCount}`);
 
   await warnOnOtherSubscribers(options);
 
@@ -454,7 +492,7 @@ async function main() {
   let cleanupStarted = false;
   let requestedExitCode = null;
   const seenMessageIds = new Set();
-  const reconcileTimer = await startReconcilePolling(kb, options, seenMessageIds);
+  const reconcileTimer = await startReconcilePolling(kb, retriever, options, seenMessageIds);
 
   function cleanupChild(reason, exitCode = null) {
     if (cleanupStarted) return;
@@ -515,7 +553,7 @@ async function main() {
         if (seenMessageIds.has(messageId)) return;
         seenMessageIds.add(messageId);
       }
-      handleIncomingEvent(payload, kb, options).catch((error) => {
+      handleIncomingEvent(payload, kb, retriever, options).catch((error) => {
         console.error(`[chat-event] handler failed: ${error.message}`);
       });
       return;

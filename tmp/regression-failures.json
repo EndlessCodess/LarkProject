@@ -1,20 +1,5 @@
 [
   {
-    "event": "lark-cli docz +fetch failed: unknown service",
-    "matched": true,
-    "ruleId": "command-existence-check-first",
-    "expectedRuleId": "command-existence-check-first",
-    "category": "command_existence",
-    "matchedSignal": "unknown service",
-    "command": "lark-cli docz --help",
-    "executable": true,
-    "executionStatus": "not_executed",
-    "effectiveStatus": "command_ok_help_returned",
-    "expectedStatus": "command_invalid",
-    "pass": false,
-    "rulePass": true
-  },
-  {
     "event": "lark-cli base +table-list --base-token wikcnABC failed: param baseToken is invalid; original link is https://example.feishu.cn/wiki/wikcnABC",
     "matched": true,
     "ruleId": "base-wiki-token-confusion",
@@ -23,8 +8,8 @@
     "matchedSignal": "param baseToken is invalid",
     "command": "lark-cli wiki spaces get_node --params '{\"token\":\"wikcnABC\"}' --as user --format json",
     "executable": true,
-    "executionStatus": "not_executed",
-    "effectiveStatus": "command_ok_api_failed",
+    "executionStatus": "command_ok_resource_not_found",
+    "effectiveStatus": "command_ok_resource_not_found",
     "expectedStatus": "command_ok_auth_failed",
     "pass": false,
     "rulePass": true

@@ -8,8 +8,9 @@ export function buildDecision({ event, picked, toolPlan, options = {} }) {
     scenario: "cli_error_guidance",
     trigger: {
       type: event.type || "cli_error",
-      mode: "event_driven",
+      mode: event.trigger_mode || event.triggerMode || "event_driven",
       text: event.text,
+      source: event.source || "",
     },
     match: {
       ruleId: picked.id,
@@ -17,6 +18,7 @@ export function buildDecision({ event, picked, toolPlan, options = {} }) {
       severity: picked.severity || "info",
       matchedSignal: picked._matchedSignal,
       confidence: inferDecisionConfidence(picked, event),
+      retrieval: picked._retrieval || null,
     },
     diagnosis: picked.diagnosis || picked.title || "No diagnosis provided.",
     guidance: {

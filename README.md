@@ -13,6 +13,7 @@
 当前版本已经具备以下能力：
 
 - 读取 `lark-cli` 错误/上下文事件流
+- 支持驻留式 CLI 监听，开发者在 Agent Shell 中执行命令后可自动触发知识卡
 - 基于本地知识规则进行匹配
 - 生成结构化 CLI 知识卡片
 - 在终端中输出知识卡摘要
@@ -23,13 +24,14 @@
 - 支持推送策略分级与去重节流
 - 支持小样本快速调试与推送门控绕过
 - 支持从测试群轮询最近消息并主动触发知识卡
+- 支持从真实终端命令失败或特定 `lark-cli` 命令中主动触发知识卡
 
 ---
 
 ## 当前工作流
 
 ```text
-terminal state / lark-cli error / Feishu resource link
+terminal command / terminal state / lark-cli error / Feishu resource link
         ↓
 context recognition
         ↓
@@ -53,6 +55,7 @@ Feishu group delivery
 - `examples/lark-cli-error-samples.jsonl`：完整样本集
 - `examples/lark-cli-error-samples-small.jsonl`：轻量调试样本集
 - `src/app/runDemo.js`：本地样本 Demo 主流程入口
+- `src/cliWatchMain.js`：驻留式 CLI 监听入口，支持 Agent Shell 与单命令测试
 - `src/chatPollMain.js`：测试群轮询触发知识卡的独立入口
 - `src/adapters/output/larkCardPayload.js`：飞书知识卡 payload 构造
 - `src/adapters/output/sendLarkInteractiveCard.js`：飞书卡片发送适配器
@@ -184,6 +187,39 @@ node "./src/chatPollMain.js" \
 
 ---
 
+### 6. 终端命令监听 Agent Shell
+
+```bash
+npm run demo:cli-watch -- \
+  --push-lark-card \
+  --push-chat-id "oc_d32c2e3e2eb66b2efca3ef677620233e" \
+  --push-as bot \
+  --push-level warning_and_above
+```
+
+适合：
+- 演示方向 C 要求的“驻留在 CLI 终端的实时知识点推送小助手”
+- 在 Agent Shell 中执行 `lark-cli` 命令，失败时自动触发知识卡
+- 对 `lark-cli auth`、`lark-cli schema`、`lark-cli <service> --help` 等特定命令做成功态知识提示
+
+示例：
+
+```bash
+agent-shell$ lark-cli wiki --unknown-flag
+```
+
+说明：
+- 默认只分析带 `lark-cli` 上下文的命令，避免监听无关终端操作
+- 命令失败、stderr 出现 `unknown flag` / `permission denied` / `invalid` 等信号时会触发规则或 RAG
+- 成功执行的特定只读命令也会触发知识召回，用于“敲击特定命令时主动推知识”的演示
+- 如需单命令自动化测试，可使用 `--command`
+
+```bash
+npm run demo:cli-watch -- --command "lark-cli im --help" --push-level all
+```
+
+---
+
 ## 推送策略与调试参数
 
 ### 推送级别
@@ -296,6 +332,7 @@ node "./src/main.js" \
 - 飞书知识卡片可以成为终端知识的外部化载体
 - 从“规则匹配”走向“半自动上下文 Agent”有清晰路径
 - 从测试群轮询消息并主动触发知识卡的路径可行
+- 从 CLI 终端命令执行结果主动触发知识卡的路径可行
 
 ---
 
@@ -307,7 +344,7 @@ node "./src/main.js" \
 - 真正可用的按钮交互动作
 - 推送对象分级（终端 / 群聊 / 私聊）
 - 更稳定的只读自动执行链路
-- 从轮询演进到正式事件订阅
+- 从轮询演进到正式事件订阅和终端监听的统一评测
 - 更强的上下文聚合与来源追踪
 
 ---
