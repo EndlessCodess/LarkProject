@@ -1,4 +1,7 @@
+import { loadProjectEnv } from "./bootstrap/loadEnv.js";
 import { runDemo } from "./app/runDemo.js";
+
+loadProjectEnv();
 
 function parseArgs(argv) {
   const args = {
@@ -6,6 +9,8 @@ function parseArgs(argv) {
     knowledgeSource: "local",
     knowledge: "knowledge/lark-cli-errors.json",
     docs: [],
+    retrieverSourcesFile: "",
+    retrieverDocsFile: "",
     larkCliTimeoutMs: 30000,
     autoReadonly: false,
     debugLarkCli: false,
@@ -23,6 +28,14 @@ function parseArgs(argv) {
     sourceChatId: "",
     sourceChatAs: "bot",
     sourceChatLimit: 20,
+    composeMode: "template",
+    liveHelp: true,
+    liveHelpTimeoutMs: 8000,
+    llmApiKey: "",
+    llmBaseUrl: "",
+    llmModel: "",
+    llmTimeoutMs: 20000,
+    llmTemperature: 0.2,
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -32,6 +45,8 @@ function parseArgs(argv) {
     if (key === "--source" && value) args.source = argv[++i];
     else if (key === "--knowledge" && value) args.knowledge = argv[++i];
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
+    else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
+    else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
     else if (key === "--lark-doc" && value) {
       args.docs.push({ url: argv[++i], apiVersion: "v2", mode: "full", as: "user" });
     } else if (key === "--lark-doc-mode" && value) {
@@ -59,6 +74,16 @@ function parseArgs(argv) {
     else if (key === "--source-chat-id" && value) args.sourceChatId = argv[++i];
     else if (key === "--source-chat-as" && value) args.sourceChatAs = argv[++i];
     else if (key === "--source-chat-limit" && value) args.sourceChatLimit = Number(argv[++i]);
+    else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
+    else if (key === "--no-compose") args.composeMode = "off";
+    else if (key === "--live-help") args.liveHelp = true;
+    else if (key === "--no-live-help") args.liveHelp = false;
+    else if (key === "--live-help-timeout-ms" && value) args.liveHelpTimeoutMs = Number(argv[++i]);
+    else if (key === "--llm-api-key" && value) args.llmApiKey = argv[++i];
+    else if (key === "--llm-base-url" && value) args.llmBaseUrl = argv[++i];
+    else if (key === "--llm-model" && value) args.llmModel = argv[++i];
+    else if (key === "--llm-timeout-ms" && value) args.llmTimeoutMs = Number(argv[++i]);
+    else if (key === "--llm-temperature" && value) args.llmTemperature = Number(argv[++i]);
   }
 
   return args;

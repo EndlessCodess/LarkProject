@@ -1,22 +1,20 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { loadProjectEnv } from "./bootstrap/loadEnv.js";
 import { runLarkCli } from "./adapters/lark-cli/runner.js";
 import { loadKnowledge } from "./core/knowledge/loadKnowledge.js";
-import { buildKnowledgeRetriever, buildRetrievedKnowledgeRule, retrieveKnowledge } from "./core/knowledge/retriever.js";
-import { matchKnowledge } from "./core/matcher.js";
-import { buildToolPlan } from "./core/agent/toolPlanner.js";
-import { buildDecision } from "./core/agent/decisionEngine.js";
-import { selectAction } from "./core/agent/actionEngine.js";
-import { buildLarkCardPayload } from "./adapters/output/larkCardPayload.js";
-import { writeLarkCardArtifact } from "./adapters/output/writeLarkCardArtifact.js";
-import { sendLarkInteractiveCard } from "./adapters/output/sendLarkInteractiveCard.js";
-import { evaluatePushPolicy } from "./adapters/output/pushPolicy.js";
+import { buildKnowledgeRetriever } from "./core/knowledge/retriever.js";
+import { processKnowledgeEvent } from "./app/processKnowledgeEvent.js";
+
+loadProjectEnv();
 
 function parseArgs(argv) {
   const args = {
     knowledgeSource: "local",
     knowledge: "knowledge/lark-cli-errors.json",
+    retrieverSourcesFile: "",
+    retrieverDocsFile: "",
     debugLarkCli: false,
     pushLarkCard: false,
     pushChatId: "",
@@ -37,6 +35,14 @@ function parseArgs(argv) {
     reconcileIntervalMs: 5000,
     reconcileLimit: 20,
     terminalsDir: process.env.CURSOR_TERMINALS_DIR || "",
+    composeMode: "template",
+    liveHelp: true,
+    liveHelpTimeoutMs: 8000,
+    llmApiKey: "",
+    llmBaseUrl: "",
+    llmModel: "",
+    llmTimeoutMs: 20000,
+    llmTemperature: 0.2,
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -45,6 +51,8 @@ function parseArgs(argv) {
 
     if (key === "--knowledge" && value) args.knowledge = argv[++i];
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
+    else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
+    else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
     else if (key === "--debug-lark-cli") args.debugLarkCli = true;
     else if (key === "--push-lark-card") args.pushLarkCard = true;
     else if (key === "--push-chat-id" && value) args.pushChatId = argv[++i];
@@ -68,6 +76,16 @@ function parseArgs(argv) {
     else if (key === "--no-compact") args.compact = false;
     else if (key === "--quiet") args.quiet = true;
     else if (key === "--no-quiet") args.quiet = false;
+    else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
+    else if (key === "--no-compose") args.composeMode = "off";
+    else if (key === "--live-help") args.liveHelp = true;
+    else if (key === "--no-live-help") args.liveHelp = false;
+    else if (key === "--live-help-timeout-ms" && value) args.liveHelpTimeoutMs = Number(argv[++i]);
+    else if (key === "--llm-api-key" && value) args.llmApiKey = argv[++i];
+    else if (key === "--llm-base-url" && value) args.llmBaseUrl = argv[++i];
+    else if (key === "--llm-model" && value) args.llmModel = argv[++i];
+    else if (key === "--llm-timeout-ms" && value) args.llmTimeoutMs = Number(argv[++i]);
+    else if (key === "--llm-temperature" && value) args.llmTemperature = Number(argv[++i]);
   }
 
   return args;
@@ -218,33 +236,6 @@ async function readRecentChatMessages(options) {
         : [];
 }
 
-async function maybePushLarkCard(payload, options, decision, context) {
-  if (!options.pushLarkCard) {
-    return { status: "disabled", summary: "未开启飞书卡片推送。" };
-  }
-
-  if (!options.pushChatId) {
-    return { status: "blocked", summary: "已开启飞书卡片推送，但缺少 --push-chat-id。" };
-  }
-
-  const policy = await evaluatePushPolicy({ decision, options, context });
-  if (!policy.shouldSend) {
-    return { status: policy.policyStatus, summary: policy.summary, policy };
-  }
-
-  try {
-    const result = await sendLarkInteractiveCard({
-      chatId: options.pushChatId,
-      payload,
-      as: options.pushAs || "bot",
-      debug: options.debugLarkCli,
-    });
-    return { status: "sent", summary: `已发送到飞书群 ${options.pushChatId}。`, transport: result, policy };
-  } catch (error) {
-    return { status: "failed", summary: error.message, policy };
-  }
-}
-
 function safeParseJson(text) {
   try {
     return JSON.parse(text);
@@ -374,42 +365,24 @@ async function handleIncomingEvent(item, kb, retriever, options) {
   if (!event) return;
 
   console.log(`[chat-event] candidate: ${event.message_id || "<no-message-id>"} ${event.text.slice(0, 120)}`);
+  const result = await processKnowledgeEvent({
+    event,
+    kb,
+    retriever,
+    options,
+    outcomeSummary: "来自事件订阅监听消息，当前仅做知识卡主动触发演示。",
+  });
 
-  const picked = pickKnowledge(event, kb.items, retriever);
-  if (!picked) {
+  if (!result.matched) {
     console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> no knowledge matched`);
     return;
   }
 
-  if (picked._retrieval) {
-    console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> retrieved ${picked._retrieval.results.length} knowledge chunk(s)`);
+  if (result.picked?._retrieval) {
+    console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> retrieved ${result.picked._retrieval.results.length} knowledge chunk(s)`);
   }
 
-  const toolPlan = buildToolPlan(picked, event);
-  const decision = buildDecision({ event, picked, toolPlan, options });
-  const action = selectAction(decision, options);
-  const payload = buildLarkCardPayload({
-    decision,
-    action,
-    outcome: {
-      actualStatus: "not_executed",
-      effectiveStatus: action?.toolPlan?.mode === "manual_auth" ? "permission_required" : "not_executed",
-      summary: "来自事件订阅监听消息，当前仅做知识卡主动触发演示。",
-    },
-    context: event.text,
-  });
-
-  await writeLarkCardArtifact(payload, options);
-  const pushResult = await maybePushLarkCard(payload, options, decision, event.text);
-  console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> ${pushResult.status}: ${pushResult.summary}`);
-}
-
-function pickKnowledge(event, knowledgeItems, retriever) {
-  const direct = matchKnowledge(event, knowledgeItems);
-  if (direct) return direct;
-
-  const retrievalResults = retrieveKnowledge(event, retriever, { topK: 5 });
-  return buildRetrievedKnowledgeRule(event, retrievalResults);
+  console.log(`[chat-event] ${event.message_id || "<no-message-id>"} -> ${result.pushResult?.status || "unknown"}: ${result.pushResult?.summary || "-"}`);
 }
 
 async function startReconcilePolling(kb, retriever, options, seenMessageIds) {

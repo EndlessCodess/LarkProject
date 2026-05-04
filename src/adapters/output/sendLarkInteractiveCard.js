@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { runLarkCli } from "../lark-cli/runner.js";
 
 export async function sendLarkInteractiveCard({ chatId, payload, as = "bot", debug = false }) {
   if (!chatId) {
@@ -23,27 +23,15 @@ export async function sendLarkInteractiveCard({ chatId, payload, as = "bot", deb
     console.log("[debug] lark send args:", ["lark-cli", ...args].join(" "));
   }
 
-  return new Promise((resolve, reject) => {
-    const child = spawn("lark-cli", args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stdout = "";
-    let stderr = "";
+  const result = await runLarkCli(args, { debug });
+  if (result.code !== 0) {
+    throw new Error(`lark-cli send failed (${result.code})\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  }
 
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve({ ok: true, code, stdout, stderr });
-        return;
-      }
-
-      reject(new Error(`lark-cli send failed (${code})\nstdout:\n${stdout}\nstderr:\n${stderr}`));
-    });
-  });
+  return {
+    ok: true,
+    code: result.code,
+    stdout: result.stdout,
+    stderr: result.stderr,
+  };
 }

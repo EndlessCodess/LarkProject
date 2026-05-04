@@ -8,11 +8,11 @@
     "template": "blue",
     "title": {
       "tag": "plain_text",
-      "content": "💡 CLI 主动知识卡 · 命令检查"
+      "content": "💡 CLI 主动知识卡 · 通用诊断"
     },
     "subtitle": {
       "tag": "plain_text",
-      "content": "低优先级 · cli_watch"
+      "content": "低优先级 · event_driven"
     }
   },
   "body": {
@@ -21,38 +21,38 @@
     "elements": [
       {
         "tag": "markdown",
-        "content": "**🔎 命令存在性检查**\n先确认命令/子命令/shortcut 真实存在，再继续执行。"
+        "content": "**💡 通用 CLI 诊断**\n先确认命令、权限和上下文，再继续执行。"
       },
       {
         "tag": "markdown",
-        "content": "**概览**\n- 风险：unknown\n- 置信度：medium\n- 状态：not_executed\n- 信号：`retriever:lark-im Shortcuts（推荐优先使用）`"
+        "content": "**概览**\n- 风险：unknown\n- 置信度：medium\n- 状态：not_executed\n- 信号：`retriever:lark-calendar 1. 预约日程/会议、查询/搜索可用会议室`"
       },
       {
         "tag": "markdown",
-        "content": "**结论与处理**\n结构化规则未直接命中，已从本地知识库召回相关内容：lark-im Shortcuts（推荐优先使用）。建议结合下方来源继续确认。\n\n1. 优先路由到 lark-im 的操作规则。\n2. 优先阅读召回来源中的相关段落，确认该问题属于哪个 lark-* Skill 或 CLI 命令族。\n3. 如果涉及真实命令参数，先用对应命令的 --help 或 schema 做只读确认，再继续执行。"
+        "content": "**结论与处理**\n命令 `lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？` 没有直接命中结构化规则，已从本地知识库召回与“lark-calendar 1. 预约日程/会议、查询/搜索可用会议室”最相关的证据。当前更接近 lark-calendar, lark-calendar-schedule-meeting 这类知识域。\n\n1. 优先查看 lark-calendar, lark-calendar-schedule-meeting 对应的 Skill 说明。\n2. 以 `lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？` 为主线，对照召回证据确认该命令属于哪个 service、shortcut 或 API 层级。\n3. 如果命令形态仍不确定，再用当前环境的 `--help` 或 `schema` 做只读验证。"
       },
       {
         "tag": "markdown",
-        "content": "**建议命令**\n```bash\nlark-cli im --help\n```"
+        "content": "**建议命令**\n```bash\nlark-cli calendar --help\n```"
       },
       {
         "tag": "markdown",
-        "content": "**执行摘要**\n来自 CLI 终端监听，已完成主动知识卡触发。"
+        "content": "**执行摘要**\nNo execution summary."
       },
       {
         "tag": "markdown",
-        "content": "**召回证据**\n1. lark-im Shortcuts（推荐优先使用）\n来源：/home/node/.agents/skills/lark-im/SKILL.md\n匹配：+chat-create, +chat-messages-list, +chat-search, +chat-update, +messages-mget, +messages-reply | score=59.6073\n2. lark-im Sender Name Resolution with Bot Identity\n来源：/home/node/.agents/skills/lark-im/SKILL.md\n匹配：+chat-messages-list, +messages-mget, +threads-messages-list, bot, e.g., identity | score=17.6414\n3. lark-im overview\n来源：/home/node/.agents/skills/lark-im/SKILL.md\n匹配：bot, chat, chat_id, conversation, file, group | score=14.7443"
+        "content": "**召回证据**\n1. lark-calendar 1. 预约日程/会议、查询/搜索可用会议室\n来源：https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g\n匹配：上, 会, 作, 先, 全, 再 | score=27.6338\n2. lark-calendar 1. 预约日程/会议、查询/搜索可用会议室\n来源：/home/node/.agents/skills/lark-calendar/SKILL.md\n匹配：上, 会, 作, 先, 全, 再 | score=27.4812\n3. 预约日程/会议、查询/搜索可用会议室的工作流 overview\n来源：https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe\n匹配：上, 会, 作, 先, 全, 再 | score=27.2071"
       },
       {
         "tag": "hr"
       },
       {
         "tag": "markdown",
-        "content": "**上下文（节选）**\n```\nterminal command: lark-cli im --help\nexit_code=0\nstdout:\nMessage and group chat management\nUsage:\n  lark-cli im [command]\nAvailable Comma...\n```"
+        "content": "**上下文（节选）**\n```\nlark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？\n```"
       },
       {
         "tag": "markdown",
-        "content": "Skill：lark-im | 模式：cli_watch"
+        "content": "Skill：lark-calendar, lark-calendar-schedule-meeting | 模式：event_driven"
       }
     ]
   }

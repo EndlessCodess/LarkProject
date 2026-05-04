@@ -55,7 +55,7 @@ Feishu group delivery
 - `examples/lark-cli-error-samples.jsonl`：完整样本集
 - `examples/lark-cli-error-samples-small.jsonl`：轻量调试样本集
 - `src/app/runDemo.js`：本地样本 Demo 主流程入口
-- `src/cliWatchMain.js`：驻留式 CLI 监听入口，支持 Agent Shell 与单命令测试
+- `src/cliWatchMain.js`：驻留式 CLI Shell 入口，支持交互命令终端与单命令测试
 - `src/chatPollMain.js`：测试群轮询触发知识卡的独立入口
 - `src/adapters/output/larkCardPayload.js`：飞书知识卡 payload 构造
 - `src/adapters/output/sendLarkInteractiveCard.js`：飞书卡片发送适配器
@@ -187,10 +187,10 @@ node "./src/chatPollMain.js" \
 
 ---
 
-### 6. 终端命令监听 Agent Shell
+### 6. CLI Shell
 
 ```bash
-npm run demo:cli-watch -- \
+npm run demo:cli-shell -- \
   --push-lark-card \
   --push-chat-id "oc_d32c2e3e2eb66b2efca3ef677620233e" \
   --push-as bot \
@@ -199,23 +199,75 @@ npm run demo:cli-watch -- \
 
 适合：
 - 演示方向 C 要求的“驻留在 CLI 终端的实时知识点推送小助手”
-- 在 Agent Shell 中执行 `lark-cli` 命令，失败时自动触发知识卡
+- 在 CLI Shell 中执行 `lark-cli` 命令，失败时自动触发知识卡
 - 对 `lark-cli auth`、`lark-cli schema`、`lark-cli <service> --help` 等特定命令做成功态知识提示
 
 示例：
 
 ```bash
-agent-shell$ lark-cli wiki --unknown-flag
+agent-shell:/workspace/LarkProject$ lark-cli wiki --unknown-flag
 ```
 
 说明：
 - 默认只分析带 `lark-cli` 上下文的命令，避免监听无关终端操作
 - 命令失败、stderr 出现 `unknown flag` / `permission denied` / `invalid` 等信号时会触发规则或 RAG
 - 成功执行的特定只读命令也会触发知识召回，用于“敲击特定命令时主动推知识”的演示
+- 交互模式支持基础会话态：`cd`、`pwd`、`clear`、`exit`
 - 如需单命令自动化测试，可使用 `--command`
 
 ```bash
-npm run demo:cli-watch -- --command "lark-cli im --help" --push-level all
+npm run demo:cli-shell -- --command "lark-cli im --help" --push-level all
+```
+
+本地也可以直接启动脚本：
+
+```powershell
+.\scripts\agent-shell.ps1 --push-level all
+```
+
+```bash
+./scripts/agent-shell.sh --push-level all
+```
+
+---
+
+### 7. lark-cli 代理模式
+
+```bash
+npm run demo:lark-cli-proxy -- im --help --agent --push-level all
+```
+
+适合：
+- 让使用方式更接近原生 `lark-cli`
+- 用户不需要先进 Shell，会更像“默认 lark-cli 多了一层知识感知”
+- 保留真正的命令退出码，方便脚本或 CI 场景继续判断成功失败
+
+说明：
+- `--agent` 之前的参数会被视为真正传给 `lark-cli` 的参数
+- `--agent` 之后的参数会传给知识监听层，例如 `--push-lark-card`、`--push-chat-id`、`--push-level`
+- 代理模式会实际执行 `lark-cli`，同时在失败或命中特定命令模式时触发知识卡
+
+示例：
+
+```bash
+npm run demo:lark-cli-proxy -- \
+  wiki --unknown-flag \
+  --agent \
+  --push-lark-card \
+  --push-chat-id "oc_d32c2e3e2eb66b2efca3ef677620233e" \
+  --push-as bot \
+  --push-level all \
+  --push-bypass-dedupe
+```
+
+本地脚本：
+
+```powershell
+.\scripts\lark-cli-agent.ps1 im --help --agent --push-level all
+```
+
+```bash
+./scripts/lark-cli-agent.sh im --help --agent --push-level all
 ```
 
 ---
@@ -356,3 +408,183 @@ node "./src/main.js" \
 - `docs/对话必读.md`
 
 如果你准备继续调知识卡片体验，优先从 `examples/lark-cli-error-samples-small.jsonl` + `--push-bypass-policy --push-bypass-dedupe` 这一套调试链路开始。
+---
+
+## LLM Composer
+
+项目入口现在会自动读取根目录 `.env`，所以常用模型和演示配置不需要每次手动 export / set。
+
+当前项目已经支持真实 LLM Composer，但默认仍保持本地 `template` 模式，避免没有模型密钥时影响演示。
+
+### 启用方式
+
+推荐先通过环境变量提供模型配置：
+
+```powershell
+$env:OPENAI_API_KEY="your_api_key"
+$env:OPENAI_MODEL="gpt-4.1-mini"
+```
+
+如果你用的是火山引擎 Ark / Doubao，可以直接这样配：
+
+```powershell
+$env:ARK_API_KEY="ark-..."
+$env:ARK_MODEL="ep-20260423223104-568xj"
+$env:ARK_BASE_URL="https://ark.cn-beijing.volces.com/api/v3"
+```
+
+然后在任意入口加上：
+
+```bash
+--compose-mode llm
+```
+
+例如：
+
+```bash
+npm run demo:lark-cli-proxy -- wiki --unknown-flag --agent --compose-mode llm --push-level all
+```
+
+### 可选参数
+
+```bash
+--llm-api-key <key>
+--llm-base-url <url>
+--llm-model <model>
+--llm-timeout-ms 20000
+--llm-temperature 0.2
+```
+
+### 当前行为
+
+- `compose-mode=llm`：优先调用真实 LLM，对规则、RAG 召回和动态 `lark-cli --help` 证据做压缩。
+- 如果缺少 `OPENAI_API_KEY`、接口超时或返回格式异常，会自动回退到 `template`，并在终端 Debug Card 里显示回退原因。
+- 当前接入的是 OpenAI-compatible `chat/completions` 接口，兼容 OpenAI 和火山引擎 Ark / Doubao 这类兼容网关。
+- 火山引擎路径优先读取 `ARK_API_KEY`、`ARK_MODEL` 和 `ARK_BASE_URL`。
+
+### CLI Watch LLM E2E
+
+项目内置了一个正式的端到端测试入口，用来演示：
+
+`terminal input -> LLM composer -> knowledge card -> Feishu push`
+
+先配置豆包 / Ark 环境变量：
+
+```powershell
+$env:ARK_API_KEY="ark-..."
+$env:ARK_MODEL="ep-20260423223104-568xj"
+$env:ARK_BASE_URL="https://ark.cn-beijing.volces.com/api/v3"
+```
+
+或者直接把这些配置写到项目根目录 `.env`，脚本会自动加载。
+
+然后直接运行：
+
+```bash
+npm run demo:cli-watch-llm
+```
+
+如果要完整推送到飞书群：
+
+```bash
+npm run demo:cli-watch-llm -- --push-chat-id "oc_xxx"
+```
+
+默认测试命令是：
+
+```bash
+lark-cli wiki --unknown-flag
+```
+
+你也可以改成自己的终端命令：
+
+```bash
+npm run demo:cli-watch-llm -- --command "lark-cli im --help" --push-chat-id "oc_xxx"
+```
+
+完整说明见：
+
+- `examples/cli-watch-llm-e2e.md`
+
+## Knowledge Sources
+
+当前 RAG 检索默认会优先使用仓库内镜像的 `lark-*` skill 文档：
+
+- `knowledge/skills/lark-shared/`
+- `knowledge/skills/lark-doc/`
+- `knowledge/skills/lark-im/`
+- `knowledge/skills/lark-wiki/`
+- 以及其余同步进仓库的 `lark-*` skills
+
+这些目录来自本机已安装的 `lark-cli` skills 镜像，检索时会优先读取仓库副本；如果某个 skill 没有镜像进仓库，才会回退读取本机 `~/.agents/skills`。
+
+### Cloud Knowledge Interface
+
+为了体现飞书云文档整合能力，项目还预留了一个云端知识入口：
+
+- 默认清单：`knowledge/lark-cloud-knowledge.json`
+
+把你的飞书文档 URL 填进 `docs` 数组后，这些文档会在构建 retriever 时通过 `lark-cli docs +fetch --api-version v2` 拉取内容，再按 chunk 进入本地 RAG 索引。
+
+如果你维护的是一个飞书文件夹，也可以直接写到 `folders` 数组里。系统会先调用 `lark-cli drive files list` 列出文件夹内容，再自动把其中的 `doc/docx/wiki` 文档展开成知识源。
+云文档和文件夹展开结果默认会缓存到 `tmp/lark-docs-cache.json`，默认 TTL 为 1 小时，避免每次启动都重新拉取。
+
+示例：
+
+```json
+{
+  "docs": [
+    {
+      "id": "skill-doc-auth-routing",
+      "url": "https://your-feishu-domain/docx/replace-with-real-doc-url",
+      "as": "user",
+      "apiVersion": "v2"
+    }
+  ],
+  "folders": [
+    {
+      "id": "calendar-skill-folder",
+      "folderUrl": "https://your-feishu-domain/drive/folder/replace-with-real-folder-token",
+      "as": "user",
+      "pageSize": 200
+    }
+  ]
+}
+```
+
+可选命令参数：
+
+```bash
+--retriever-sources-file knowledge/lark-cloud-knowledge.json
+```
+
+或者使用环境变量：
+
+```powershell
+$env:LARK_RETRIEVER_SOURCES_FILE="knowledge/lark-cloud-knowledge.json"
+```
+
+兼容旧参数：
+
+```bash
+--retriever-sources-file knowledge/lark-cloud-knowledge.json
+```
+
+可选缓存环境变量：
+
+```powershell
+$env:LARK_DOCS_CACHE_FILE="tmp/lark-docs-cache.json"
+$env:LARK_DOCS_CACHE_TTL_MS="3600000"
+```
+
+???????????????? `~/.agents/skills`?????
+
+```powershell
+$env:LARK_RETRIEVER_DISABLE_INSTALLED_SKILLS="1"
+```
+
+Calendar 云文档样例：
+
+```bash
+npm run demo -- --source examples/lark-cloud-calendar-samples.jsonl --retriever-sources-file knowledge/lark-cloud-knowledge.json --no-quality-report
+```

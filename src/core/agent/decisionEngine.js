@@ -1,6 +1,6 @@
-export function buildDecision({ event, picked, toolPlan, options = {} }) {
-  const suggestedActions = picked.suggested_actions || [picked.suggestion].filter(Boolean);
-  const routeToSkills = picked.route_to_skills || [];
+export function buildDecision({ event, picked, toolPlan, options = {}, composition = null }) {
+  const suggestedActions = composition?.suggestedActions || picked.suggested_actions || [picked.suggestion].filter(Boolean);
+  const routeToSkills = composition?.routeToSkills || picked.route_to_skills || [];
 
   return {
     type: "knowledge_decision",
@@ -20,13 +20,15 @@ export function buildDecision({ event, picked, toolPlan, options = {} }) {
       confidence: inferDecisionConfidence(picked, event),
       retrieval: picked._retrieval || null,
     },
-    diagnosis: picked.diagnosis || picked.title || "No diagnosis provided.",
+    diagnosis: composition?.diagnosis || picked.diagnosis || picked.title || "No diagnosis provided.",
     guidance: {
       suggestedActions,
       routeToSkills,
-      nextCommand: picked.next_command_template || "",
+      nextCommand: composition?.nextCommand || picked.next_command_template || "",
       nextStepKind: inferNextStepKind(toolPlan),
     },
+    composition,
+    liveEvidence: composition?.liveEvidence || null,
     policy: {
       riskLevel: inferRiskLevel(toolPlan),
       autoReadonlyEnabled: Boolean(options.autoReadonly),

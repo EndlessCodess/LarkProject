@@ -87,6 +87,7 @@ Knowledge Card 输出
 - 通过测试群轮询最近消息，识别 `lark-cli` 相关错误文本和自然语言求助。
 - 使用本地 state 文件记录最近消费位置，避免重复处理历史消息。
 - 通过 `cliWatchMain.js` 提供驻留式 Agent Shell，监听开发者在终端中执行的 `lark-cli` 命令，并在失败或命中特定只读命令时主动触发知识卡。
+- 提供 `larkCliProxyMain.js` 代理入口，让用户以更接近原生 `lark-cli` 的方式执行命令，同时自动接入知识监听和推送链路。
 
 ### 下一阶段：半自动上下文 Agent
 
@@ -602,3 +603,89 @@ CLI 命令事件
 ```
 
 这样当前项目已经同时具备三类主动触发来源：本地样本回放、飞书群消息事件、CLI 终端命令监听。比赛展示时，CLI 监听作为方向 C 的主入口，飞书群卡片作为外部分发形态。
+
+进一步地，项目也支持“代理式命令执行”：
+
+```text
+lark-cli 代理命令
+  -> 实际执行 lark-cli <args>
+  -> 自动采集退出码 / stderr / stdout 摘要
+  -> 命中规则或 RAG 时主动推送知识卡
+```
+
+这使项目不必强依赖先进入 Agent Shell，也更贴近“默认 lark-cli 多了一层知识感知能力”的产品体验。
+
+### 2026-05-04 Composer 层补齐
+
+为让项目从“规则/RAG 命中后直接拼接卡片”继续向“知识整合 Agent”推进，当前链路新增了一层轻量 Composer：
+
+```text
+上下文标准化
+  -> 检索查询整理
+  -> 规则 / RAG 召回
+  -> Composer 压缩诊断与建议
+  -> 终端卡片 / 飞书卡片
+```
+
+当前实现先使用本地 template composer，不依赖外部模型密钥，目的是先把 Agent 的推理接口稳定下来：
+
+- 从命令、退出码、stderr/stdout 摘要中整理检索查询。
+- 将规则命中和 RAG 召回结果压缩为更贴近当前上下文的诊断。
+- 在终端 Debug View 中显示“整理模式”和“检索查询”，便于继续调试。
+
+后续如果接入真实 LLM，只需要替换 Composer 实现，而无需推翻现有规则、RAG、CLI 验证和卡片分发链路。
+### 2026-05-04 真实 LLM Composer 接入
+
+在现有 `template composer` 稳定链路之上，项目已经补齐真实 LLM Composer 的可插拔实现：
+
+```text
+上下文标准化
+  -> 检索查询整理
+  -> 规则 / RAG 召回
+  -> 动态 lark-cli --help 证据
+  -> LLM Composer 压缩
+  -> 终端卡片 / 飞书卡片
+```
+
+当前实现策略如下：
+
+- 新增 `src/core/agent/llmComposer.js`，通过 OpenAI-compatible `chat/completions` 接口调用真实模型。
+- 入口参数新增：
+  - `--compose-mode llm`
+  - `--llm-api-key`
+  - `--llm-base-url`
+  - `--llm-model`
+  - `--llm-timeout-ms`
+  - `--llm-temperature`
+- 默认仍保持 `template`，避免在没有 API key 时影响本地演示。
+- 当 LLM 缺少密钥、超时、HTTP 错误或返回 JSON 结构异常时，会自动回退到 `template composer`，并在终端 Debug Card 中显示回退原因。
+- 当前实现同时兼容 OpenAI 和火山引擎 Ark / Doubao 这类 OpenAI-compatible 网关；若环境变量中配置 `ARK_API_KEY`、`ARK_MODEL`、`ARK_BASE_URL`，会优先按 Ark 路径解析。
+
+这意味着当前项目已经不只是“规则命中后拼装卡片”，而是具备了：
+
+1. 规则与 RAG 召回阶段负责找证据。
+2. 动态 `lark-cli --help` 负责补当前环境的真实命令形态。
+3. LLM Composer 负责把证据压缩成更像 Agent 的诊断、建议和下一步命令。
+
+这一步让项目更贴近赛道“企业办公知识整合与分发 Agent”的表述：知识不是直接原样返回，而是经过 Agent 化整理后再分发到终端或飞书。
+### 2026-05-04 鐭ヨ瘑婧愭墿鍏咃細鏈湴 skill 闀滃儚 + 浜戦涔︽枃妗ｅ叆鍙?
+
+涓轰簡鏇村ソ鍦拌创鍚堚€滀紒涓氬姙鍏煡璇嗘暣鍚堜笌鍒嗗彂 Agent鈥濓紝褰撳墠 RAG 妫€绱㈢殑鐭ヨ瘑婧愯鏄庣‘鎷嗘垚涓ゆ潯绾匡細
+
+1. `knowledge/skills/` 涓嬬殑 `lark-*` skill 闀滃儚锛屼綔涓洪」鐩唴鍙鐜扮殑鏈湴鐭ヨ瘑搴曞骇銆?
+2. `knowledge/lark-cloud-knowledge.json` 涓殑椋炰功 Docx 娓呭崟锛屼綔涓轰簯绔煡璇嗘帴鍏ュ彛銆?
+
+妫€绱㈡椂浼氫紭鍏堣鍙栦粨搴撳唴鐨?skill 闀滃儚锛屽彧鍦ㄤ粨搴撶己灏戞煇涓?skill 鏃舵墠鍥為€€鍒版湰鏈?`~/.agents/skills`銆傚悓鏃讹紝濡傛灉鍦?`knowledge/lark-cloud-knowledge.json` 涓～鍏ラ涔︽枃妗?URL锛岀郴缁熶細閫氳繃 `lark-cli docs +fetch --api-version v2` 鎷夊彇鏂囨。鍐呭锛屽苟鍚屾牱鍒囨垚 chunks 杩涘叆 RAG 绱㈠紩銆?
+
+杩欒椤圭洰涓嶅啀鍙槸鈥滄湰鍦?skill 妫€绱⑩€濓紝鑰屾槸鍙互缁х画婕旇繘涓衡€滄湰鍦?CLI 鐭ヨ瘑 + 浜戦涔︽枃妗?FAQ/瑙勭害/鍥㈤槦绾鈥濈殑娣峰悎鐭ヨ瘑妫€绱㈡灦鏋勩€?
+
+### 2026-05-05 浜戦涔︽枃浠跺す绾х煡璇嗗叆鍙?
+
+涓轰簡鏇村ソ灞曠ず鈥滈涔︿簯鏂囨。 / 浜戠┖闂撮泦鎴愯兘鍔涒€濓紝褰撳墠椤圭洰涓嶄粎鏀寔鍗曠瘒 Docx 浣滀负浜戦涔︾煡璇嗘簮锛屼篃鏀寔浠?Drive folder 浣滀负涓€涓?cloud knowledge entrypoint銆?
+
+??`knowledge/lark-cloud-knowledge.json` ????????? docs[] ??folders[] ???????????????????????????????????????
+
+- `docs[]`锛氬崟绡囨枃妗?URL / token
+- `folders[]`锛氭枃浠跺す URL / token
+
+褰撲娇鐢?`folders[]` 鏃讹紝绯荤粺浼氬厛璋冪敤 `lark-cli drive files list` 鍒楀嚭鏂囦欢澶瑰唴瀹癸紝鍐嶈嚜鍔ㄦ妸鍏朵腑鐨?`doc/docx/wiki` 灞曞紑涓轰竴缁勫彲鍙洖鐨勪簯绔煡璇嗘潯鐩€傝繖涓洪珮棰戝皢涓€缁勪笓棰樻枃妗ｏ紙渚嬪 calendar skill銆両M FAQ銆佹潈闄愯鑼冿級缁熶竴鏀惧湪椋炰功鏂囦欢澶逛腑鎻愪緵浜嗘洿鑷劧鐨勬帴鍏ユ柟寮忋€?

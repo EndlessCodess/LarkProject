@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { expandLarkDocsManifest, fetchLarkDocsDocuments } from "../../adapters/knowledge-source/larkDocsKnowledgeSource.js";
 
 const DEFAULT_SKILL_NAMES = [
   "lark-shared",
@@ -56,13 +57,15 @@ export async function buildKnowledgeRetriever(options = {}, knowledge = {}) {
 }
 
 export async function buildKnowledgeChunks(options = {}, knowledge = {}) {
-  const [ruleChunks, projectSkillChunks, larkSkillChunks] = await Promise.all([
+  const [ruleChunks, projectSkillChunks, bundledLarkSkillChunks, installedLarkSkillChunks, cloudDocChunks] = await Promise.all([
     buildRuleChunks(knowledge.items || []),
     buildProjectSkillChunks(options),
-    buildLarkSkillChunks(options),
+    buildBundledLarkSkillChunks(options),
+    buildInstalledLarkSkillChunks(options),
+    buildLarkDocsChunks(options),
   ]);
 
-  return [...ruleChunks, ...projectSkillChunks, ...larkSkillChunks];
+  return [...ruleChunks, ...projectSkillChunks, ...bundledLarkSkillChunks, ...installedLarkSkillChunks, ...cloudDocChunks];
 }
 
 export function retrieveKnowledge(query, index, options = {}) {
@@ -220,12 +223,44 @@ async function buildProjectSkillChunks(options) {
   });
 }
 
-async function buildLarkSkillChunks(options) {
+async function buildBundledLarkSkillChunks(options) {
+  const root = options.bundledSkillRoot || path.resolve("knowledge/skills");
+  const names = await listBundledSkillNames(root);
+  if (!names.length) return [];
+
+  const chunks = [];
+  for (const name of names) {
+    const skillRoot = path.join(root, name);
+    const markdownFiles = await collectSkillMarkdownFiles(skillRoot);
+    for (const filePath of markdownFiles) {
+      const raw = await safeReadFile(filePath);
+      if (!raw) continue;
+      chunks.push(
+        ...markdownToChunks(raw, {
+          source_type: "skill",
+          source: relativeSource(filePath),
+          skillName: name,
+          docKind: classifySkillDocKind(filePath, skillRoot),
+        }),
+      );
+    }
+  }
+
+  return chunks;
+}
+
+async function buildInstalledLarkSkillChunks(options) {
+  if (options.disableInstalledSkills || process.env.LARK_RETRIEVER_DISABLE_INSTALLED_SKILLS === "1") {
+    return [];
+  }
+
   const names = parseListOption(options.retrieverSkillNames || options.skillNames || DEFAULT_SKILL_NAMES.join(","));
   const roots = buildSkillRoots(options);
   const chunks = [];
 
   for (const name of names) {
+    const bundledSkillPath = path.resolve("knowledge/skills", name, "SKILL.md");
+    if (await fileExists(bundledSkillPath)) continue;
     const filePath = await findSkillFile(name, roots);
     if (!filePath) continue;
     const raw = await safeReadFile(filePath);
@@ -237,6 +272,53 @@ async function buildLarkSkillChunks(options) {
         skillName: name,
       }),
     );
+  }
+
+  return chunks;
+}
+
+async function buildLarkDocsChunks(options) {
+  const docs = await resolveRetrieverDocs(options);
+  if (!docs.length) return [];
+
+  const documents = await fetchLarkDocsDocuments({
+    docs,
+    timeoutMs: options.larkCliTimeoutMs,
+  });
+
+  const chunks = [];
+  for (const doc of documents) {
+    if (doc.source_type === "cloud_skill_file") {
+      chunks.push(
+        ...markdownToChunks(doc.content || "", {
+          source_type: "cloud_doc",
+          source: doc.url || doc.id || "cloud-skill-file",
+          skillName: inferCloudSkillName(doc),
+          docKind: "cloud_skill_file",
+          cloudDocId: doc.id || "",
+          sourceFolderUrl: doc.metadata?.sourceFolderUrl || "",
+          sourceFolderToken: doc.metadata?.sourceFolderToken || "",
+          path: doc.metadata?.path || "",
+        }),
+      );
+      continue;
+    }
+
+    const title = inferCloudDocTitle(doc);
+    for (const part of splitDocContent(doc.content || "", 1500)) {
+      chunks.push({
+        id: `cloud-doc:${sanitizeId(doc.id || doc.url || title)}:${chunks.length}`,
+        source_type: "cloud_doc",
+        source: doc.url || doc.id || "lark-doc",
+        title,
+        content: part,
+        metadata: {
+          skillName: "lark-doc",
+          docKind: "cloud_doc",
+          cloudDocId: doc.id || "",
+        },
+      });
+    }
   }
 
   return chunks;
@@ -328,6 +410,57 @@ function splitLongText(text, maxLength) {
   return parts;
 }
 
+async function listBundledSkillNames(root) {
+  try {
+    const entries = await fs.readdir(root, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith("lark-"))
+      .map((entry) => entry.name)
+      .sort();
+  } catch {
+    return [];
+  }
+}
+
+async function collectSkillMarkdownFiles(skillRoot) {
+  const preferred = [
+    path.join(skillRoot, "SKILL.md"),
+  ];
+  const referencesRoot = path.join(skillRoot, "references");
+  const referenceFiles = await walkMarkdownFiles(referencesRoot);
+  return unique([...preferred, ...referenceFiles]);
+}
+
+async function walkMarkdownFiles(root) {
+  try {
+    const stat = await fs.stat(root);
+    if (!stat.isDirectory()) return [];
+  } catch {
+    return [];
+  }
+
+  const files = [];
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const nextPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await walkMarkdownFiles(nextPath)));
+      continue;
+    }
+    if (entry.isFile() && /\.md$/i.test(entry.name)) {
+      files.push(nextPath);
+    }
+  }
+  return files.sort();
+}
+
+function classifySkillDocKind(filePath, skillRoot) {
+  if (path.resolve(filePath) === path.resolve(skillRoot, "SKILL.md")) return "skill_root";
+  const relative = path.relative(skillRoot, filePath).replace(/\\/g, "/");
+  if (relative.startsWith("references/")) return "reference";
+  return "skill_extra";
+}
+
 function buildSkillRoots(options) {
   const configured = parseListOption(options.retrieverSkillRoots || process.env.LARK_SKILL_ROOTS || "");
   const home = os.homedir();
@@ -343,6 +476,41 @@ function buildSkillRoots(options) {
     "C:\\Users\\k4231\\.agents\\skills",
     "C:\\Users\\k4231\\.codex\\skills",
   ]);
+}
+
+async function resolveRetrieverDocs(options) {
+  if (Array.isArray(options.retrieverDocs) && options.retrieverDocs.length) {
+    return options.retrieverDocs;
+  }
+
+  const candidateFiles = unique([
+    options.retrieverSourcesFile,
+    process.env.LARK_RETRIEVER_SOURCES_FILE,
+    options.retrieverDocsFile,
+    process.env.LARK_RETRIEVER_DOCS_FILE,
+    path.resolve("knowledge/lark-cloud-knowledge.json"),
+    path.resolve("knowledge/lark-cloud-docs.json"),
+  ]);
+
+  for (const filePath of candidateFiles) {
+    const raw = await safeReadFile(filePath);
+    if (!raw) continue;
+
+    try {
+      const parsed = JSON.parse(raw);
+      const docs = Array.isArray(parsed?.docs) ? parsed.docs : [];
+      const folders = Array.isArray(parsed?.folders) ? parsed.folders : [];
+      return await expandLarkDocsManifest({
+        docs: docs.filter((doc) => doc && (doc.url || doc.token)),
+        folders,
+        timeoutMs: options.larkCliTimeoutMs,
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return [];
 }
 
 async function findSkillFile(name, roots) {
@@ -416,6 +584,7 @@ function extractPhrases(text) {
 function sourceTypeBonus(chunk) {
   if (chunk.source_type === "rule") return 0.15;
   if (chunk.source_type === "skill") return 0.08;
+  if (chunk.source_type === "cloud_doc") return 0.18;
   return 0;
 }
 
@@ -462,6 +631,36 @@ function inferNextCommand(results) {
     return `lark-cli ${firstSkill.replace(/^lark-/, "")} --help`;
   }
   return "lark-cli <service> --help";
+}
+
+function inferCloudDocTitle(doc) {
+  const content = String(doc.content || "").trim();
+  const firstHeading = content.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  const firstLine = content.split(/\r?\n/).map((line) => line.trim()).find(Boolean) || "";
+  return firstHeading || firstLine.slice(0, 80) || doc.url || doc.id || "cloud-doc";
+}
+
+function inferCloudSkillName(doc) {
+  const title = String(doc.title || "").trim();
+  if (/^lark-[a-z0-9-]+/i.test(title)) {
+    return title.replace(/\.md$/i, "");
+  }
+  const firstLine = String(doc.content || "").match(/^name:\s*([A-Za-z0-9_-]+)/m)?.[1];
+  if (firstLine) return firstLine;
+  return "lark-cloud-skill";
+}
+
+function splitDocContent(text, maxLength) {
+  const raw = String(text || "").trim();
+  if (!raw) return [];
+  const sections = raw.split(/\n(?=#{1,3}\s)|\n---+\n/g).map((part) => part.trim()).filter(Boolean);
+  if (!sections.length) return splitLongText(raw, maxLength);
+
+  const parts = [];
+  for (const section of sections) {
+    parts.push(...splitLongText(section, maxLength));
+  }
+  return parts;
 }
 
 function extractLarkCliCommand(text) {

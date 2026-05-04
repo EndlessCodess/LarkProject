@@ -230,9 +230,9 @@ function analyzeCliText(text, parsed = null) {
     .split(/\r?\n/)
     .map((line) => line.trimEnd());
 
-  const usageLine = lines.find((line) => /^Usage:/i.test(line.trim()));
+  const usageLine = extractUsageLine(lines);
   if (usageLine) {
-    analysis.usage = usageLine.trim();
+    analysis.usage = usageLine;
   }
 
   const flagLines = collectIndentedBlock(lines, /^Flags:/i);
@@ -255,6 +255,23 @@ function analyzeCliText(text, parsed = null) {
   }
 
   return Object.keys(analysis).length ? analysis : null;
+}
+
+function extractUsageLine(lines) {
+  const start = lines.findIndex((line) => /^Usage:/i.test(line.trim()));
+  if (start === -1) return "";
+
+  const current = lines[start].trim();
+  if (current !== "Usage:") return current;
+
+  for (let i = start + 1; i < lines.length; i++) {
+    const next = lines[i].trim();
+    if (!next) continue;
+    if (/^[A-Za-z][A-Za-z\s]+:$/.test(next)) break;
+    return `Usage: ${next}`;
+  }
+
+  return current;
 }
 
 function collectIndentedBlock(lines, headerPattern) {

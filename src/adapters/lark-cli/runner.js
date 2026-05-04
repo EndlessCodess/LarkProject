@@ -1,9 +1,12 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 export function runLarkCli(args, options = {}) {
-  const { timeoutMs = 30000, cwd = process.cwd(), debug = false } = options;
-  const command = "lark-cli";
-  const commandArgs = args;
+  const { timeoutMs = 30000, cwd = process.cwd(), debug = false, windowsHide = true } = options;
+  const invocation = resolveLarkCliInvocation(args);
+  const command = invocation.command;
+  const commandArgs = invocation.args;
 
   if (debug) {
     console.error(`[lark-cli runner] ${command} ${commandArgs.join(" ")}`);
@@ -13,7 +16,7 @@ export function runLarkCli(args, options = {}) {
     const child = spawn(command, commandArgs, {
       cwd,
       shell: false,
-      windowsHide: true,
+      windowsHide,
     });
 
     let stdout = "";
@@ -41,6 +44,33 @@ export function runLarkCli(args, options = {}) {
       resolve({ code, stdout, stderr, args, command });
     });
   });
+}
+
+function resolveLarkCliInvocation(args) {
+  if (process.platform !== "win32") {
+    return { command: "lark-cli", args };
+  }
+
+  const runJsPath = findWindowsLarkCliRunJs();
+  if (runJsPath) {
+    return {
+      command: process.execPath,
+      args: [runJsPath, ...args],
+    };
+  }
+
+  return { command: "lark-cli.cmd", args };
+}
+
+function findWindowsLarkCliRunJs() {
+  const appData = process.env.APPDATA || "";
+  const userProfile = process.env.USERPROFILE || "";
+  const candidates = [
+    appData ? path.join(appData, "npm", "node_modules", "@larksuite", "cli", "scripts", "run.js") : "",
+    userProfile ? path.join(userProfile, "AppData", "Roaming", "npm", "node_modules", "@larksuite", "cli", "scripts", "run.js") : "",
+  ].filter(Boolean);
+
+  return candidates.find((file) => fs.existsSync(file)) || "";
 }
 
 export async function preflightLarkCliCommand(args, options = {}) {

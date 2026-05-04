@@ -11,7 +11,10 @@
     "demo:regression": "node src/main.js --source examples/lark-cli-error-samples.jsonl --knowledge-source local --knowledge knowledge/lark-cli-errors.json --auto-readonly --debug-lark-cli --lark-cli-timeout-ms 10000 --show-regression-summary",
     "demo:chat-poll": "node src/chatPollMain.js",
     "demo:chat-event": "node src/chatEventMain.js",
-    "demo:cli-watch": "node src/cliWatchMain.js"
+    "demo:cli-watch": "node src/cliWatchMain.js",
+    "demo:cli-watch-llm": "node src/demoCliWatchLlmMain.js",
+    "demo:cli-shell": "node src/cliWatchMain.js",
+    "demo:lark-cli-proxy": "node src/larkCliProxyMain.js"
   },
   "engines": {
     "node": ">=18"

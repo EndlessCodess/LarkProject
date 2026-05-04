@@ -1,0 +1,1 @@
+{"type":"cli_error","trigger_mode":"event_driven","text":"lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？"}

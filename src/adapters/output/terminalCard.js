@@ -6,6 +6,8 @@ export function renderTerminalCard(card) {
   const toolPlan = decision?.toolPlan;
   const toolExecution = outcome?.execution;
   const retrieval = decision?.match?.retrieval;
+  const composition = decision?.composition;
+  const liveEvidence = decision?.liveEvidence;
 
   lines.push("=".repeat(100));
   lines.push("[CLI Knowledge Card · Debug View]");
@@ -24,6 +26,21 @@ export function renderTerminalCard(card) {
     lines.push(`- 匹配信号: ${decision.match?.matchedSignal || "-"}`);
     lines.push(`- 决策置信度: ${decision.match?.confidence || "unknown"}`);
     lines.push(`- 风险等级: ${decision.policy?.riskLevel || "unknown"}`);
+    if (composition?.mode) {
+      lines.push(`- 整理模式: ${composition.mode}`);
+    }
+    if (composition?.model) {
+      lines.push(`- LLM 模型: ${composition.model}`);
+    }
+    if (composition?.fallbackReason) {
+      lines.push(`- 回退原因: ${truncateInline(composition.fallbackReason, 160)}`);
+    }
+    if (composition?.query?.text) {
+      lines.push(`- 检索查询: ${truncateInline(composition.query.text, 160)}`);
+    }
+    if (liveEvidence?.usage || liveEvidence?.summary) {
+      lines.push(`- 动态 help: ${truncateInline(liveEvidence.usage || liveEvidence.summary, 160)}`);
+    }
 
     if (retrieval?.results?.length) {
       lines.push(`- 召回策略: ${retrieval.strategy || "local_lightweight_retrieval"}`);
@@ -182,6 +199,12 @@ function hasToolExecutionDetails(toolExecution) {
       toolExecution.analysis?.bodyFields?.length ||
       toolExecution.analysis?.conclusions?.length,
   );
+}
+
+function truncateInline(text, max) {
+  const value = String(text || "").replace(/\s+/g, " ").trim();
+  if (value.length <= max) return value;
+  return `${value.slice(0, max - 3)}...`;
 }
 
 export function renderNoMatch(event) {

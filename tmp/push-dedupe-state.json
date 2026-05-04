@@ -1,30 +1,40 @@
 {
-  "c1b8cebbdf6da51c4121434b90fa5c05686258f0": {
-    "sentAt": 1777742290313,
+  "6cfede3a14914695a86ac690bba9d68ff9e6b0c2": {
+    "sentAt": 1777833966861,
+    "ruleId": "retrieved-home-node-agents-skills-lark-im-skill-md-lark-im-shortcuts-推荐优先使用",
+    "matchedSignal": "retriever:lark-im Shortcuts（推荐优先使用）",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": false
+  },
+  "dec944fc6ceafd6a62dc0a82858996924485d0d2": {
+    "sentAt": 1777903800347,
     "ruleId": "command-existence-check-first",
     "matchedSignal": "unknown flag",
     "severity": "error",
     "riskLevel": "low",
     "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
     "bypassPolicy": false,
-    "bypassDedupe": false
+    "bypassDedupe": true
   },
-  "6da06cfec2eb3beb81c83a388ad3b060333fee4f": {
-    "sentAt": 1777743584368,
-    "ruleId": "retrieved-home-node-agents-skills-lark-shared-skill-md-lark-shared-overview",
-    "matchedSignal": "retriever:lark-shared overview",
-    "severity": "info",
-    "riskLevel": "unknown",
+  "0b2e29184e79386721ed8c8ba3db85f2de20d76b": {
+    "sentAt": 1777831016154,
+    "ruleId": "command-existence-check-first",
+    "matchedSignal": "unknown flag",
+    "severity": "error",
+    "riskLevel": "medium",
     "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
     "bypassPolicy": false,
     "bypassDedupe": false
   },
-  "6cfede3a14914695a86ac690bba9d68ff9e6b0c2": {
-    "sentAt": 1777819127347,
-    "ruleId": "retrieved-home-node-agents-skills-lark-im-skill-md-lark-im-shortcuts-推荐优先使用",
-    "matchedSignal": "retriever:lark-im Shortcuts（推荐优先使用）",
-    "severity": "info",
-    "riskLevel": "unknown",
+  "d96b4d814e4f989d2764f166e6c7180b51882431": {
+    "sentAt": 1777903366482,
+    "ruleId": "command-existence-check-first",
+    "matchedSignal": "unknown flag",
+    "severity": "error",
+    "riskLevel": "low",
     "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
     "bypassPolicy": false,
     "bypassDedupe": true

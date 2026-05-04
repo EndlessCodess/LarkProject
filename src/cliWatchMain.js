@@ -1,14 +1,21 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { loadProjectEnv } from "./bootstrap/loadEnv.js";
 import { loadKnowledge } from "./core/knowledge/loadKnowledge.js";
 import { buildKnowledgeRetriever } from "./core/knowledge/retriever.js";
 import { processKnowledgeEvent } from "./app/processKnowledgeEvent.js";
+
+loadProjectEnv();
 
 function parseArgs(argv) {
   const args = {
     knowledgeSource: "local",
     knowledge: "knowledge/lark-cli-errors.json",
+    retrieverSourcesFile: "",
+    retrieverDocsFile: "",
     larkCliTimeoutMs: 30000,
     commandTimeoutMs: 120000,
     debugLarkCli: false,
@@ -23,12 +30,20 @@ function parseArgs(argv) {
     pushBypassDedupe: false,
     command: "",
     cwd: process.cwd(),
-    shell: process.env.SHELL || "/bin/bash",
+    shell: defaultShell(),
     triggerAll: false,
     triggerOnSuccess: true,
     preserveExitCode: false,
     stderrTailLines: 80,
     stdoutTailLines: 30,
+    composeMode: "template",
+    liveHelp: true,
+    liveHelpTimeoutMs: 8000,
+    llmApiKey: "",
+    llmBaseUrl: "",
+    llmModel: "",
+    llmTimeoutMs: 20000,
+    llmTemperature: 0.2,
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -40,6 +55,8 @@ function parseArgs(argv) {
       break;
     } else if (key === "--knowledge" && value) args.knowledge = argv[++i];
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
+    else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
+    else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
     else if (key === "--lark-cli-timeout-ms" && value) args.larkCliTimeoutMs = Number(argv[++i]);
     else if (key === "--command-timeout-ms" && value) args.commandTimeoutMs = Number(argv[++i]);
     else if (key === "--debug-lark-cli") args.debugLarkCli = true;
@@ -61,6 +78,16 @@ function parseArgs(argv) {
     else if (key === "--preserve-exit-code") args.preserveExitCode = true;
     else if (key === "--stderr-tail-lines" && value) args.stderrTailLines = Number(argv[++i]);
     else if (key === "--stdout-tail-lines" && value) args.stdoutTailLines = Number(argv[++i]);
+    else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
+    else if (key === "--no-compose") args.composeMode = "off";
+    else if (key === "--live-help") args.liveHelp = true;
+    else if (key === "--no-live-help") args.liveHelp = false;
+    else if (key === "--live-help-timeout-ms" && value) args.liveHelpTimeoutMs = Number(argv[++i]);
+    else if (key === "--llm-api-key" && value) args.llmApiKey = argv[++i];
+    else if (key === "--llm-base-url" && value) args.llmBaseUrl = argv[++i];
+    else if (key === "--llm-model" && value) args.llmModel = argv[++i];
+    else if (key === "--llm-timeout-ms" && value) args.llmTimeoutMs = Number(argv[++i]);
+    else if (key === "--llm-temperature" && value) args.llmTemperature = Number(argv[++i]);
   }
 
   return args;
@@ -70,38 +97,93 @@ async function main() {
   const options = parseArgs(process.argv);
   const kb = await loadKnowledge(options);
   const retriever = await buildKnowledgeRetriever(options, kb);
+  const session = {
+    cwd: options.cwd || process.cwd(),
+  };
 
   console.log(`[cli-watch] knowledge rules: ${kb.items.length}`);
   console.log(`[cli-watch] retriever chunks: ${retriever.meta.chunkCount}`);
 
   if (options.command) {
-    const result = await runCommandAndMaybeAnalyze(options.command, { kb, retriever, options });
+    const result = await runCommandAndMaybeAnalyze(options.command, { kb, retriever, options, session });
     process.exit(options.preserveExitCode ? result.exitCode : 0);
   }
 
-  await runInteractiveShell({ kb, retriever, options });
+  await runInteractiveShell({ kb, retriever, options, session });
 }
 
-async function runInteractiveShell({ kb, retriever, options }) {
+async function runInteractiveShell({ kb, retriever, options, session }) {
   console.log("[cli-watch] Agent shell started. Type a command, or type exit to quit.");
   console.log("[cli-watch] lark-cli commands with failures or watched patterns will trigger knowledge cards.\n");
+
+  if (!input.isTTY) {
+    const rl = readline.createInterface({ input, output });
+    try {
+      for await (const rawLine of rl) {
+        const command = String(rawLine || "").trim();
+        if (!command) continue;
+        if (command === "exit" || command === "quit") break;
+        if (command === "pwd") {
+          console.log(session.cwd);
+          continue;
+        }
+        if (command === "clear") {
+          process.stdout.write("\x1Bc");
+          continue;
+        }
+        if (command === "cd" || command.startsWith("cd ")) {
+          handleCdCommand(command, session);
+          continue;
+        }
+        await runCommandAndMaybeAnalyze(command, { kb, retriever, options, session });
+      }
+      return;
+    } finally {
+      rl.close();
+    }
+  }
 
   const rl = readline.createInterface({ input, output });
   try {
     while (true) {
-      const command = (await rl.question("agent-shell$ ")).trim();
+      const prompt = `agent-shell:${formatPromptCwd(session.cwd)}$ `;
+      let command = "";
+      try {
+        command = (await rl.question(prompt)).trim();
+      } catch (error) {
+        if (error?.code === "ERR_USE_AFTER_CLOSE" || /readline was closed/i.test(String(error?.message || ""))) {
+          break;
+        }
+        throw error;
+      }
       if (!command) continue;
       if (command === "exit" || command === "quit") break;
-      await runCommandAndMaybeAnalyze(command, { kb, retriever, options });
+
+      if (command === "pwd") {
+        console.log(session.cwd);
+        continue;
+      }
+
+      if (command === "clear") {
+        process.stdout.write("\x1Bc");
+        continue;
+      }
+
+      if (command === "cd" || command.startsWith("cd ")) {
+        handleCdCommand(command, session);
+        continue;
+      }
+
+      await runCommandAndMaybeAnalyze(command, { kb, retriever, options, session });
     }
   } finally {
     rl.close();
   }
 }
 
-async function runCommandAndMaybeAnalyze(command, { kb, retriever, options }) {
+async function runCommandAndMaybeAnalyze(command, { kb, retriever, options, session }) {
   console.log(`[cli-watch] run: ${command}`);
-  const execution = await runShellCommand(command, options);
+  const execution = await runShellCommand(command, options, session);
   const shouldAnalyze = shouldAnalyzeCommand({ command, execution, options });
 
   if (!shouldAnalyze) {
@@ -109,7 +191,7 @@ async function runCommandAndMaybeAnalyze(command, { kb, retriever, options }) {
     return execution;
   }
 
-  const event = buildCliEvent({ command, execution, options });
+  const event = buildCliEvent({ command, execution, options, session });
   console.log(`[cli-watch] candidate: exit=${execution.exitCode} ${command.slice(0, 120)}`);
   const result = await processKnowledgeEvent({
     event,
@@ -130,11 +212,11 @@ async function runCommandAndMaybeAnalyze(command, { kb, retriever, options }) {
   return execution;
 }
 
-function runShellCommand(command, options) {
+function runShellCommand(command, options, session) {
   return new Promise((resolve) => {
     const startedAt = Date.now();
     const child = spawn(command, {
-      cwd: options.cwd || process.cwd(),
+      cwd: session?.cwd || options.cwd || process.cwd(),
       env: process.env,
       shell: options.shell || true,
       stdio: ["inherit", "pipe", "pipe"],
@@ -222,7 +304,7 @@ function hasWatchedSuccessPattern(command) {
   ].some((pattern) => pattern.test(normalized));
 }
 
-function buildCliEvent({ command, execution, options }) {
+function buildCliEvent({ command, execution, options, session }) {
   const stderrPreview = tailLines(execution.stderr, options.stderrTailLines);
   const stdoutPreview = tailLines(execution.stdout, options.stdoutTailLines);
   const text = [
@@ -243,12 +325,51 @@ function buildCliEvent({ command, execution, options }) {
     command,
     exit_code: execution.exitCode,
     signal: execution.signal || "",
-    cwd: options.cwd || process.cwd(),
+    cwd: session?.cwd || options.cwd || process.cwd(),
     duration_ms: execution.durationMs,
     stderr_preview: stderrPreview,
     stdout_preview: stdoutPreview,
     create_time: new Date().toISOString(),
   };
+}
+
+function handleCdCommand(command, session) {
+  const targetRaw = command === "cd" ? "~" : command.slice(2).trim();
+  const target = expandHome(targetRaw || "~");
+  const next = path.resolve(session.cwd, target);
+
+  try {
+    const normalized = path.normalize(next);
+    const stat = fs.statSync(normalized);
+    if (!stat.isDirectory()) {
+      console.error(`[cli-watch] cd failed: not a directory: ${normalized}`);
+      return;
+    }
+    session.cwd = normalized;
+  } catch (error) {
+    console.error(`[cli-watch] cd failed: ${error.message}`);
+  }
+}
+
+function expandHome(value) {
+  if (value === "~") return process.env.HOME || process.env.USERPROFILE || process.cwd();
+  if (value.startsWith("~/") || value.startsWith("~\\")) {
+    const home = process.env.HOME || process.env.USERPROFILE || process.cwd();
+    return path.join(home, value.slice(2));
+  }
+  return value;
+}
+
+function formatPromptCwd(value) {
+  const cwd = String(value || process.cwd());
+  return cwd.replace(/\\/g, "/");
+}
+
+function defaultShell() {
+  if (process.platform === "win32") {
+    return process.env.ComSpec || "cmd.exe";
+  }
+  return process.env.SHELL || "/bin/bash";
 }
 
 function tailLines(text, maxLines) {

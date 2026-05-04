@@ -5,6 +5,8 @@ import { matchKnowledge } from "../core/matcher.js";
 import { loadKnowledge } from "../core/knowledge/loadKnowledge.js";
 import { buildKnowledgeRetriever, buildRetrievedKnowledgeRule, retrieveKnowledge } from "../core/knowledge/retriever.js";
 import { buildToolPlan } from "../core/agent/toolPlanner.js";
+import { buildCompositionInput, composeKnowledge } from "../core/agent/composer.js";
+import { collectLiveCliEvidence } from "../core/agent/liveCliEvidence.js";
 import { interpretToolResult } from "../core/agent/resultInterpreter.js";
 import { buildDecision } from "../core/agent/decisionEngine.js";
 import { selectAction } from "../core/agent/actionEngine.js";
@@ -45,7 +47,10 @@ export async function runDemo(options) {
     }
 
     const toolPlan = buildToolPlan(picked, event);
-    const decision = buildDecision({ event, picked, toolPlan, options });
+    const liveEvidence = await collectLiveCliEvidence(event, options);
+    const compositionInput = buildCompositionInput(event, picked, toolPlan, liveEvidence);
+    const composition = await composeKnowledge(compositionInput, options);
+    const decision = buildDecision({ event, picked, toolPlan, options, composition });
     const action = selectAction(decision, options);
     const toolExecution = await maybeExecuteToolPlan(action.toolPlan, options, picked);
     const effectiveStatus = inferEffectiveStatus(toolExecution?.status || "not_executed", toolExecution?.plannedStatus);
