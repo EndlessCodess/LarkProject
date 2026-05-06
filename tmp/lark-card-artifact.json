@@ -5,14 +5,14 @@
     "enable_forward": true
   },
   "header": {
-    "template": "blue",
+    "template": "orange",
     "title": {
       "tag": "plain_text",
-      "content": "💡 CLI 主动知识卡 · 通用诊断"
+      "content": "⚠️ CLI 主动知识卡 · 通用诊断"
     },
     "subtitle": {
       "tag": "plain_text",
-      "content": "低优先级 · event_driven"
+      "content": "中优先级 · event_driven"
     }
   },
   "body": {
@@ -25,34 +25,34 @@
       },
       {
         "tag": "markdown",
-        "content": "**概览**\n- 风险：unknown\n- 置信度：medium\n- 状态：not_executed\n- 信号：`retriever:lark-calendar 1. 预约日程/会议、查询/搜索可用会议室`"
+        "content": "**概览**\n- 风险：unknown\n- 置信度：medium\n- 状态：not_executed\n- 信号：`retriever:lark-cli-knowledge-assistant overview`"
       },
       {
         "tag": "markdown",
-        "content": "**结论与处理**\n命令 `lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？` 没有直接命中结构化规则，已从本地知识库召回与“lark-calendar 1. 预约日程/会议、查询/搜索可用会议室”最相关的证据。当前更接近 lark-calendar, lark-calendar-schedule-meeting 这类知识域。\n\n1. 优先查看 lark-calendar, lark-calendar-schedule-meeting 对应的 Skill 说明。\n2. 以 `lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？` 为主线，对照召回证据确认该命令属于哪个 service、shortcut 或 API 层级。\n3. 如果命令形态仍不确定，再用当前环境的 `--help` 或 `schema` 做只读验证。"
+        "content": "**结论与处理**\n结构化规则未直接命中，已从本地知识库召回lark-cli相关内容，当前lark-cli contact search-user报错大概率是命令不存在、未完成初始化配置或参数错误导致\n\n1. 先执行lark-cli config init完成lark-cli的基础配置初始化\n2. 执行lark-cli contact --help查看contact模块支持的合法命令，确认search-user命令是否存在\n3. 若需查询用户信息，可使用已验证的lark-cli contact +get-user系列合法命令操作"
       },
       {
         "tag": "markdown",
-        "content": "**建议命令**\n```bash\nlark-cli calendar --help\n```"
+        "content": "**建议命令**\n```bash\nlark-cli config init\n```"
       },
       {
         "tag": "markdown",
-        "content": "**执行摘要**\nNo execution summary."
+        "content": "**执行摘要**\n来自事件订阅监听消息，当前仅做知识卡主动触发演示。"
       },
       {
         "tag": "markdown",
-        "content": "**召回证据**\n1. lark-calendar 1. 预约日程/会议、查询/搜索可用会议室\n来源：https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g\n匹配：上, 会, 作, 先, 全, 再 | score=27.6338\n2. lark-calendar 1. 预约日程/会议、查询/搜索可用会议室\n来源：/home/node/.agents/skills/lark-calendar/SKILL.md\n匹配：上, 会, 作, 先, 全, 再 | score=27.4812\n3. 预约日程/会议、查询/搜索可用会议室的工作流 overview\n来源：https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe\n匹配：上, 会, 作, 先, 全, 再 | score=27.2071"
+        "content": "**召回证据**\n1. lark-cli-knowledge-assistant overview\n来源：skills/lark-cli-knowledge-assistant/SKILL.md\n匹配：lark-cli, 么, 什, 况, 情, 报 | score=4.922\n2. lark-shared overview\n来源：knowledge/skills/lark-shared/SKILL.md\n匹配：lark-cli, 错 | score=4.568\n3. contact +get-user（获取用户信息） 命令\n来源：knowledge/skills/lark-contact/references/lark-contact-get-user.md\n匹配：contact, lark-cli | score=4.5464"
       },
       {
         "tag": "hr"
       },
       {
         "tag": "markdown",
-        "content": "**上下文（节选）**\n```\nlark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？\n```"
+        "content": "**上下文（节选）**\n```\nlark-cli contact search-user报错是什么情况呢？\n```"
       },
       {
         "tag": "markdown",
-        "content": "Skill：lark-calendar, lark-calendar-schedule-meeting | 模式：event_driven"
+        "content": "Skill：lark-cli-knowledge-assistant, lark-shared, lark-contact | 模式：event_driven"
       }
     ]
   }

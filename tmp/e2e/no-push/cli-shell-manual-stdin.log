@@ -1,0 +1,99 @@
+# cli-shell-manual-stdin
+name: Agent Shell 手动输入命令触发知识卡
+command: /usr/bin/node src/cliWatchMain.js --compose-mode llm --llm-timeout-ms 45000 --no-live-help --push-level all --push-bypass-dedupe
+exitCode: 0
+signal: 
+timedOut: false
+startedAt: 2026-05-05T12:27:21.867Z
+durationMs: 37636
+[cli-watch] knowledge rules: 10
+[cli-watch] retriever chunks: 2985
+[cli-watch] Agent shell started. Type a command, or type exit to quit.
+[cli-watch] lark-cli commands with failures or watched patterns will trigger knowledge cards.
+
+[cli-watch] run: lark-cli wiki --unknown-flag
+Usage:
+  lark-cli wiki [command]
+
+Available Commands:
+  +delete-space Delete a wiki space, polling the async delete task when needed
+  +move         Move a wiki node, or move a Drive document into Wiki
+  +node-create  Create a wiki node with automatic space resolution
+  members       members operations
+  nodes         nodes operations
+  spaces        spaces operations
+
+Flags:
+  -h, --help   help for wiki
+
+Use "lark-cli wiki [command] --help" for more information about a command.
+
+Error: unknown flag: --unknown-flag
+[cli-watch] candidate: exit=1 lark-cli wiki --unknown-flag
+====================================================================================================
+[CLI Knowledge Card · Debug View]
+流水线: 规则命中 -> shortcut_usage -> 工具计划 -> manual_or_blocked -> command_ok_help_returned
+
+[0] 输入上下文
+----------------------------------------------------------------------------------------
+- 事件类型: cli_command
+- 触发模式: cli_watch
+- 原始文本: terminal command: lark-cli wiki --unknown-flag
+exit_code=1
+stderr:
+Error: unknown flag: --unknown-flag
+
+[1] 知识获取与匹配
+----------------------------------------------------------------------------------------
+- 路径: 结构化规则直接命中
+- 错误类型: shortcut_usage
+- 严重级别: info
+- 匹配信号: unknown flag
+- 决策置信度: high
+- 风险等级: medium
+- 整理模式: llm
+- LLM 模型: ep-20260423223104-568xj
+- 检索查询: lark-cli wiki --unknown-flag Error: unknown flag: --unknown-flag signal:unknown flag category:shortcut_usage
+- 关联 Skill: lark-doc, lark-base, lark-sheets, lark-im, lark-task
+
+[2] 诊断与建议
+----------------------------------------------------------------------------------------
+- 诊断: 当前lark-cli wiki命令执行失败是因为使用了未定义的--unknown-flag参数，属于快捷命令使用不当
+- 建议步骤:
+  1. 参考已返回的lark-cli wiki帮助信息，确认支持的子命令与合法flag范围
+  2. 若使用带+前缀的shortcut操作，执行lark-cli wiki +<verb> --help查询对应操作的参数要求
+  3. 替换非法参数后重新组织命令执行
+- 下一步命令: lark-cli wiki +<verb> --help
+
+[3] Agent 动作选择
+----------------------------------------------------------------------------------------
+- 策略: present_guidance_only
+- 执行模式: manual_or_blocked
+- 下一步类型: help_check
+
+[4] 工具计划
+----------------------------------------------------------------------------------------
+- 工具: lark-cli
+- 模式: readonly_help
+- 安全级别: readonly
+- 只读: 是
+- 需要确认: 否
+- 可自动执行: 否
+- 命令: lark-cli wiki +<verb> --help
+- 原因: help 查询是只读操作，可确认当前 CLI 版本真实支持的 shortcut 参数。
+- 未解析变量: verb
+
+[5] 执行结果
+----------------------------------------------------------------------------------------
+- 实际状态: not_executed
+- 归一状态: command_ok_help_returned
+- 摘要: 未开启 --auto-readonly，仅展示工具调用计划。
+
+[6] 分发与来源
+----------------------------------------------------------------------------------------
+- 当前分发形态: terminal_local
+- 可扩展分发形态: lark_card
+- 来源: 各 lark-* Skill 的 Shortcuts 章节
+====================================================================================================
+
+[cli-watch] push -> disabled: 未开启飞书卡片推送。

@@ -1,16 +1,6 @@
 {
-  "6cfede3a14914695a86ac690bba9d68ff9e6b0c2": {
-    "sentAt": 1777833966861,
-    "ruleId": "retrieved-home-node-agents-skills-lark-im-skill-md-lark-im-shortcuts-推荐优先使用",
-    "matchedSignal": "retriever:lark-im Shortcuts（推荐优先使用）",
-    "severity": "info",
-    "riskLevel": "unknown",
-    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
-    "bypassPolicy": false,
-    "bypassDedupe": false
-  },
   "dec944fc6ceafd6a62dc0a82858996924485d0d2": {
-    "sentAt": 1777903800347,
+    "sentAt": 1777977798343,
     "ruleId": "command-existence-check-first",
     "matchedSignal": "unknown flag",
     "severity": "error",
@@ -19,22 +9,112 @@
     "bypassPolicy": false,
     "bypassDedupe": true
   },
-  "0b2e29184e79386721ed8c8ba3db85f2de20d76b": {
-    "sentAt": 1777831016154,
-    "ruleId": "command-existence-check-first",
+  "72013679660e97c8e6b6af14bbe3b0a991bdfbde": {
+    "sentAt": 1777977744078,
+    "ruleId": "retrieved-knowledge-skills-lark-shared-skill-md-lark-shared-overview",
+    "matchedSignal": "retriever:lark-shared overview",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "0c79ed99ab5905e83f9f823c3057430fa7b41609": {
+    "sentAt": 1777978401815,
+    "ruleId": "retrieved-knowledge-skills-lark-im-skill-md-lark-im-shortcuts-推荐优先使用",
+    "matchedSignal": "retriever:lark-im Shortcuts（推荐优先使用）",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "7ebcc963ab51436645e1a3d86db0a9c86ecc9d25": {
+    "sentAt": 1777979424529,
+    "ruleId": "retrieved-home-node-agents-skills-lark-calendar-skill-md-lark-calendar-1-预约日程-会议-查询-搜索可用会议室",
+    "matchedSignal": "retriever:lark-calendar 1. 预约日程/会议、查询/搜索可用会议室",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "7e2d871898a637252da6ca5748e059fcb3055ac2": {
+    "sentAt": 1777983607222,
+    "ruleId": "shortcut-help-required",
     "matchedSignal": "unknown flag",
-    "severity": "error",
+    "severity": "info",
     "riskLevel": "medium",
     "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
     "bypassPolicy": false,
-    "bypassDedupe": false
+    "bypassDedupe": true
   },
-  "d96b4d814e4f989d2764f166e6c7180b51882431": {
-    "sentAt": 1777903366482,
-    "ruleId": "command-existence-check-first",
-    "matchedSignal": "unknown flag",
-    "severity": "error",
-    "riskLevel": "low",
+  "cfb40646d1328e9886b4951496e6cd17664d2d8d": {
+    "sentAt": 1777995141263,
+    "ruleId": "retrieved-knowledge-skills-lark-doc-skill-md-lark-doc-overview",
+    "matchedSignal": "retriever:lark-doc overview",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "ae042be7165473e68655b672ba2e8ad644145123": {
+    "sentAt": 1778007101293,
+    "ruleId": "retrieved-knowledge-skills-lark-contact-references-lark-contact-get-user-md-contact-get-user-获取用户信息-contact-get-user-获取用户信息",
+    "matchedSignal": "retriever:contact +get-user（获取用户信息） contact +get-user（获取用户信息）",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "8f77da24a99bcc14e412302c58197257cacb8401": {
+    "sentAt": 1778007744994,
+    "ruleId": "retrieved-knowledge-skills-lark-im-skill-md-lark-im-chats",
+    "matchedSignal": "retriever:lark-im chats",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "4dea57b32a5e0249e95a123c150b46dafe1d5577": {
+    "sentAt": 1778007938486,
+    "ruleId": "retrieved-knowledge-skills-lark-mail-skill-md-lark-mail-使用公共邮箱或别名-send-as-发信",
+    "matchedSignal": "retriever:lark-mail 使用公共邮箱或别名（send_as）发信",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "d6a79ad39ded9e8296756f8a09732efeefb8721c": {
+    "sentAt": 1778008024091,
+    "ruleId": "retrieved-knowledge-skills-lark-base-references-lark-base-workflow-schema-md-workflow-数据结构参考-触发器节点输出",
+    "matchedSignal": "retriever:Workflow 数据结构参考 触发器节点输出",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "98d428ee83b84cffff3718ab1ea7c2361af64459": {
+    "sentAt": 1778008732763,
+    "ruleId": "retrieved-knowledge-skills-lark-im-references-lark-im-messages-send-md-im-messages-send-commands",
+    "matchedSignal": "retriever:im +messages-send Commands",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "427ec46f18c237f9543e8009315c35be85166f43": {
+    "sentAt": 1778052104488,
+    "ruleId": "retrieved-skills-lark-cli-knowledge-assistant-skill-md-lark-cli-knowledge-assistant-overview",
+    "matchedSignal": "retriever:lark-cli-knowledge-assistant overview",
+    "severity": "warning",
+    "riskLevel": "unknown",
     "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
     "bypassPolicy": false,
     "bypassDedupe": true

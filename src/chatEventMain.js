@@ -3,11 +3,17 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { loadProjectEnv } from "./bootstrap/loadEnv.js";
 import { runLarkCli } from "./adapters/lark-cli/runner.js";
+import { startLarkWsEventSource } from "./adapters/event-source/larkWsEventSource.js";
 import { loadKnowledge } from "./core/knowledge/loadKnowledge.js";
 import { buildKnowledgeRetriever } from "./core/knowledge/retriever.js";
 import { processKnowledgeEvent } from "./app/processKnowledgeEvent.js";
 
 loadProjectEnv();
+
+function defaultComposeMode() {
+  return process.env.LARK_FORCE_LLM_COMPOSE === "1" ? "llm" : process.env.LARK_COMPOSE_MODE || "template";
+}
+
 
 function parseArgs(argv) {
   const args = {
@@ -25,6 +31,10 @@ function parseArgs(argv) {
     pushBypassPolicy: false,
     pushBypassDedupe: false,
     sourceChatId: "",
+    eventSource: process.env.LARK_EVENT_SOURCE || "lark-cli",
+    appId: process.env.LARK_APP_ID || "",
+    appSecret: process.env.LARK_APP_SECRET || "",
+    sdkLogLevel: process.env.LARK_SDK_LOG_LEVEL || "info",
     eventType: "im.message.receive_v1",
     subscribeAs: "bot",
     compact: true,
@@ -35,7 +45,7 @@ function parseArgs(argv) {
     reconcileIntervalMs: 5000,
     reconcileLimit: 20,
     terminalsDir: process.env.CURSOR_TERMINALS_DIR || "",
-    composeMode: "template",
+    composeMode: defaultComposeMode(),
     liveHelp: true,
     liveHelpTimeoutMs: 8000,
     llmApiKey: "",
@@ -63,6 +73,10 @@ function parseArgs(argv) {
     else if (key === "--push-bypass-policy") args.pushBypassPolicy = true;
     else if (key === "--push-bypass-dedupe") args.pushBypassDedupe = true;
     else if (key === "--source-chat-id" && value) args.sourceChatId = argv[++i];
+    else if (key === "--event-source" && value) args.eventSource = argv[++i];
+    else if (key === "--app-id" && value) args.appId = argv[++i];
+    else if (key === "--app-secret" && value) args.appSecret = argv[++i];
+    else if (key === "--sdk-log-level" && value) args.sdkLogLevel = argv[++i];
     else if (key === "--event-type" && value) args.eventType = argv[++i];
     else if (key === "--subscribe-as" && value) args.subscribeAs = argv[++i];
     else if (key === "--lark-cli-timeout-ms" && value) args.larkCliTimeoutMs = Number(argv[++i]);
@@ -77,6 +91,7 @@ function parseArgs(argv) {
     else if (key === "--quiet") args.quiet = true;
     else if (key === "--no-quiet") args.quiet = false;
     else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
+    else if (key === "--force-llm-compose") args.composeMode = "llm";
     else if (key === "--no-compose") args.composeMode = "off";
     else if (key === "--live-help") args.liveHelp = true;
     else if (key === "--no-live-help") args.liveHelp = false;
@@ -453,6 +468,48 @@ async function main() {
 
   await warnOnOtherSubscribers(options);
 
+  if (String(options.eventSource || "").toLowerCase() === "sdk") {
+    await startSdkSubscriber(kb, retriever, options);
+    return;
+  }
+
+  await startLarkCliSubscriber(kb, retriever, options);
+}
+
+async function startSdkSubscriber(kb, retriever, options) {
+  console.log(`[chat-event] subscribe: official sdk websocket event=${options.eventType}`);
+
+  let cleanupStarted = false;
+  const seenMessageIds = new Set();
+  const reconcileTimer = await startReconcilePolling(kb, retriever, options, seenMessageIds);
+
+  const source = await startLarkWsEventSource(options, async (payload) => {
+    const messageId = getMessageId(payload);
+    if (messageId) {
+      if (seenMessageIds.has(messageId)) return;
+      seenMessageIds.add(messageId);
+    }
+    await handleIncomingEvent(payload, kb, retriever, options);
+  });
+
+  function cleanup(reason, exitCode = null) {
+    if (cleanupStarted) return;
+    cleanupStarted = true;
+    if (reconcileTimer) clearInterval(reconcileTimer);
+    console.log(`[chat-event] cleaning up sdk subscriber (${reason})`);
+    source.close();
+    if (exitCode != null) process.exit(exitCode);
+  }
+
+  process.on("SIGINT", () => cleanup("SIGINT", 130));
+  process.on("SIGTERM", () => cleanup("SIGTERM", 143));
+  process.on("SIGHUP", () => cleanup("SIGHUP", 129));
+  process.on("exit", () => {
+    if (!cleanupStarted) source.close();
+  });
+}
+
+async function startLarkCliSubscriber(kb, retriever, options) {
   const args = buildSubscribeArgs(options);
   console.log(`[chat-event] subscribe: lark-cli ${args.join(" ")}`);
 

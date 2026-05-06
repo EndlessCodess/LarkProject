@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-05-05T12:20:08.141Z",
+  "startedAt": "2026-05-05T12:19:21.872Z",
+  "durationMs": 46269,
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "pushEnabled": true,
+  "results": [
+    {
+      "id": "cli-command-llm-card",
+      "name": "单条终端命令触发 LLM 知识卡",
+      "ok": true,
+      "skipped": false,
+      "timedOut": false,
+      "exitCode": 0,
+      "signal": "",
+      "durationMs": 46268,
+      "logFile": "tmp\\e2e\\cli-command-llm-card.log",
+      "checks": [
+        {
+          "needle": "[demo:cli-watch-llm] running end-to-end demo",
+          "ok": true
+        },
+        {
+          "needle": "[cli-watch] candidate",
+          "ok": true
+        },
+        {
+          "needle": "[CLI Knowledge Card",
+          "ok": true
+        }
+      ]
+    }
+  ]
+}

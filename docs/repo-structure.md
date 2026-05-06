@@ -1,125 +1,113 @@
 # Repository Structure
 
+当前仓库按“入口、核心链路、适配器、知识源、演示材料”组织。比赛前不做大规模迁移，优先保持已验证链路稳定。
+
 ```text
 LarkProject/
-├─ .devcontainer/
-│  └─ devcontainer.json
-├─ .dockerignore
-├─ .gitignore
-├─ compose.yaml
-├─ Dockerfile
-├─ package.json
-├─ README.md
 ├─ config/
 │  └─ knowledge-sources.example.json
 ├─ docs/
-│  ├─ lark-cli-help.md
-│  ├─ lark-cli-integration.md
+│  ├─ architecture.md
+│  ├─ demo-script.md
+│  ├─ next_plan.md
 │  ├─ product-definition.md
 │  ├─ repo-structure.md
-│  └─ 参赛要求.md
+│  ├─ 参赛要求.md
+│  └─ 对话必读.md
 ├─ examples/
-│  └─ lark-cli-error-samples.jsonl
+│  ├─ cli-watch-llm-e2e.md
+│  ├─ lark-cli-error-samples.jsonl
+│  ├─ lark-cli-error-samples-small.jsonl
+│  ├─ lark-cli-rag-samples.jsonl
+│  └─ lark-cloud-calendar-samples.jsonl
 ├─ history/
-│  └─ 2026-04-25.md
 ├─ knowledge/
-│  └─ lark-cli-errors.json
+│  ├─ skills/
+│  ├─ lark-cli-errors.json
+│  └─ lark-cloud-knowledge.json
+├─ scripts/
+│  ├─ agent-shell.ps1
+│  ├─ agent-shell.sh
+│  ├─ lark-cli-agent.ps1
+│  └─ lark-cli-agent.sh
 ├─ skills/
 │  └─ lark-cli-knowledge-assistant/
-│     └─ SKILL.md
-└─ src/
-   ├─ main.js
-   ├─ app/
-   │  └─ runDemo.js
-   ├─ core/
-   │  ├─ io.js
-   │  ├─ matcher.js
-   │  └─ knowledge/
-   │     ├─ cloudKnowledgeNormalizer.js
-   │     └─ loadKnowledge.js
-   └─ adapters/
-      ├─ event-source/
-      ├─ knowledge-source/
-      │  ├─ larkDocsKnowledgeSource.js
-      │  └─ localKnowledgeSource.js
-      ├─ lark-cli/
-      │  └─ runner.js
-      └─ output/
-         └─ terminalCard.js
+├─ src/
+│  ├─ app/
+│  ├─ bootstrap/
+│  ├─ core/
+│  ├─ adapters/
+│  ├─ main.js
+│  ├─ chatEventMain.js
+│  ├─ chatPollMain.js
+│  ├─ cliWatchMain.js
+│  ├─ demoCliWatchLlmMain.js
+│  └─ larkCliProxyMain.js
+├─ tmp/
+├─ package.json
+└─ README.md
 ```
 
-## Module Responsibilities
+## Entry Files
 
-- `Dockerfile`, `compose.yaml`, `.devcontainer/devcontainer.json`
-  - Define the Ubuntu 24.04 development container with Node.js, npm, git, jq and `lark-cli`.
-  - Keep the default workflow Linux/bash-compatible while mounting the current project directory.
-  - The container has its own `lark-cli` configuration state; host configuration is not automatically available inside Docker.
+- `src/demoCliWatchLlmMain.js`
+  - 比赛 CLI 主入口包装器，对应 `npm run demo:competition:cli`。
 
-- `skills/lark-cli-knowledge-assistant/SKILL.md`
-  - Defines when OpenClaw should route `lark-cli`, OpenAPI and OpenClaw error contexts to this assistant.
-  - This is the project-facing Skill entrypoint, not the installed upstream `lark-*` Skill knowledge itself.
+- `src/chatEventMain.js`
+  - 飞书群事件监听入口，对应 `npm run demo:competition:chat`。
 
-- `knowledge/lark-cli-errors.json`
-  - Structured local rules for classifying common CLI error scenarios and producing actionable repair cards.
-  - Next step: add `tool_plan` metadata so rules can describe safe read-only checks and confirmation-gated write operations.
+- `src/main.js`
+  - 本地样例回放入口，对应 `npm run demo` 和 `npm run demo:cloud-calendar`。
 
-- `src/adapters/lark-cli/runner.js`
-  - Subprocess wrapper for invoking `lark-cli`.
-  - On Windows it routes through `cmd.exe`; on Linux/Docker it calls `lark-cli` directly.
-  - It should stay execution-focused and avoid business interpretation.
+- `src/cliWatchMain.js`
+  - 通用 CLI Watch / Shell 入口，对应 `npm run demo:cli-watch` 和 `npm run demo:cli-shell`。
 
-- `src/adapters/knowledge-source/localKnowledgeSource.js`
-  - Loads local JSON rules.
+- `src/larkCliProxyMain.js`
+  - `lark-cli` 代理模式入口，对应 `npm run demo:lark-cli-proxy`。
 
-- `src/adapters/knowledge-source/larkDocsKnowledgeSource.js`
-  - Fetches Feishu/Lark cloud docs through `lark-cli docs +fetch` and converts them into candidate knowledge documents.
-  - This is read-only by design.
+- `src/chatPollMain.js`
+  - 群消息轮询补偿/调试入口，对应 `npm run demo:chat-poll`。
 
-- `src/core/knowledge/cloudKnowledgeNormalizer.js`
-  - Normalizes cloud-document text into the same knowledge rule shape as local JSON.
-  - Next step: distinguish normal prose documents from structured rule documents and return diagnostics when no rules are parsed.
+## Core Modules
 
-- `examples/lark-cli-error-samples.jsonl`
-  - Event-driven demo input that simulates terminal error events.
-  - This is the current Context Collector substitute.
+- `src/app/processKnowledgeEvent.js`
+  - 统一知识事件处理主线。
 
 - `src/core/matcher.js`
-  - Rule matching and priority scoring.
-  - Future agent stages can feed its matched rule into a Tool Planner.
+  - 结构化规则匹配。
 
-- `src/adapters/output/terminalCard.js`
-  - Terminal knowledge-card renderer.
-  - Next step: include `tool_plan`, execution safety level and optional read-only execution results.
+- `src/core/knowledge/retriever.js`
+  - 本地轻量 RAG，索引本地 Skill、错误规则和云知识 manifest。
 
-## Agent Architecture Mapping
+- `src/core/agent/composer.js`
+  - 模板/LLM Composer 调度。
 
-The project is evolving from a static rule matcher into a semi-automatic context agent:
+- `src/core/agent/llmComposer.js`
+  - OpenAI-compatible LLM 调用，兼容 Ark / Doubao。
 
-```text
-Context Collector       -> examples JSONL today; terminal / hook / IDE stream later
-Intent Router           -> matcher + route_to_skills today; Skill index later
-Skill Knowledge Index   -> local JSON / cloud docs today; installed lark-* Skill parsing later
-Tool Planner            -> planned; based on rule.tool_plan
-Tool Executor           -> src/adapters/lark-cli/runner.js
-Result Interpreter      -> planned; parse lark-cli JSON/errors into agent states
-Card Renderer           -> src/adapters/output/terminalCard.js
-```
+- `src/core/agent/liveCliEvidence.js`
+  - 动态 `lark-cli --help` 证据采集。
 
-## MVP Boundary
+- `src/core/agent/decisionEngine.js`
+  - 把知识、证据和执行状态整理为卡片决策对象。
 
-The current implementation still defaults to local JSONL events and local rules for reproducibility. The cloud-docs adapter can read real Feishu cloud documents when explicitly invoked with:
+## Adapters
 
-```bash
-node src/main.js \
-  --source examples/lark-cli-error-samples.jsonl \
-  --knowledge-source lark-docs \
-  --lark-doc <url>
-```
+- `src/adapters/knowledge-source/`
+  - 本地规则与飞书云文档/云文件夹知识源。
 
-If this returns `0 knowledge rules` without a fetch error, it means the document was read successfully but did not match the structured rule format expected by the normalizer.
+- `src/adapters/lark-cli/runner.js`
+  - 跨平台 `lark-cli` 子进程调用。
 
-## Near-term Development Boundary
+- `src/adapters/output/`
+  - 终端卡片、飞书卡片 payload、推送策略和发送适配器。
 
-- Read-only `lark-cli` checks may become auto-executable behind an explicit `--auto-readonly` flag.
-- Write/delete/send operations must remain confirmation-gated.
-- Dangerous operations should prefer dry-run or preview flows before execution.
+## Knowledge Boundary
+
+`knowledge/` 顶层只保留三个入口：
+
+- `knowledge/skills/`
+- `knowledge/lark-cli-errors.json`
+- `knowledge/lark-cloud-knowledge.json`
+
+其他运行产物和下载缓存放在 `tmp/`，不作为稳定知识入口。

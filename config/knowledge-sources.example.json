@@ -1,16 +1,18 @@
 {
-  "knowledgeSource": "local",
-  "local": {
-    "path": "knowledge/lark-cli-errors.json"
-  },
-  "larkDocs": {
-    "timeoutMs": 30000,
-    "docs": [
-      {
-        "id": "example-cloud-knowledge-doc",
-        "url": "TODO: 填入飞书云文档链接或 token",
-        "as": "user"
-      }
-    ]
-  }
+  "docs": [
+    {
+      "id": "example-doc",
+      "url": "https://your-domain.feishu.cn/docx/replace-with-real-doc-token",
+      "as": "user",
+      "apiVersion": "v2"
+    }
+  ],
+  "folders": [
+    {
+      "id": "example-skill-folder",
+      "folderUrl": "https://your-domain.feishu.cn/drive/folder/replace-with-real-folder-token",
+      "as": "user",
+      "pageSize": 200
+    }
+  ]
 }

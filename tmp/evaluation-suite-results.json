@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-05-05T14:47:04.745Z",
+  "durationMs": 1968,
+  "totalSuites": 2,
+  "passedSuites": 2,
+  "failedSuites": 0,
+  "showTop3": true,
+  "results": [
+    {
+      "id": "regression",
+      "name": "小回归集",
+      "command": "node src/evaluateMain.js --output tmp/evaluation-results.json --markdown tmp/evaluation-report.md --quiet --summary-table --show-top3",
+      "output": "tmp/evaluation-results.json",
+      "markdown": "tmp/evaluation-report.md",
+      "exitCode": 0,
+      "durationMs": 874,
+      "ok": true,
+      "summary": {
+        "total": 12,
+        "passed": 12,
+        "failed": 0,
+        "passRate": 1,
+        "durationMs": 134
+      },
+      "metrics": {
+        "matchKindAccuracy": 1,
+        "ruleHitAccuracy": 1,
+        "routeSkillHitRate": 1,
+        "sourceHitRate": 1,
+        "composeModeAccuracy": null,
+        "averageLatencyMs": 11
+      }
+    },
+    {
+      "id": "quality",
+      "name": "30 条 Agent 质量评测集",
+      "command": "node src/evaluateMain.js --source examples/evaluation/agent-quality-cases.jsonl --output tmp/evaluation-quality-results.json --markdown tmp/evaluation-quality-report.md --quiet --summary-table --show-top3",
+      "output": "tmp/evaluation-quality-results.json",
+      "markdown": "tmp/evaluation-quality-report.md",
+      "exitCode": 0,
+      "durationMs": 1092,
+      "ok": true,
+      "summary": {
+        "total": 30,
+        "passed": 30,
+        "failed": 0,
+        "passRate": 1,
+        "durationMs": 338
+      },
+      "metrics": {
+        "matchKindAccuracy": 1,
+        "ruleHitAccuracy": 1,
+        "routeSkillHitRate": 1,
+        "sourceHitRate": 1,
+        "composeModeAccuracy": null,
+        "averageLatencyMs": 11
+      }
+    }
+  ]
+}

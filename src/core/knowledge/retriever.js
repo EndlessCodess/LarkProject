@@ -96,6 +96,8 @@ export function retrieveKnowledge(query, index, options = {}) {
     score += phraseBonus(queryText, chunk.searchText);
     score += sourceTypeBonus(chunk);
     score += skillRouteBonus(chunk, preferredSkills);
+    score += nonPreferredSkillPenalty(chunk, preferredSkills);
+    score += commandIntentBonus(queryText, chunk);
 
     if (score > 0) {
       scored.push({
@@ -142,7 +144,7 @@ export function buildRetrievedKnowledgeRule(event, retrievalResults, options = {
     diagnosis: `结构化规则未直接命中，已从本地知识库召回相关内容：${primary.title || primary.source}。建议结合下方来源继续确认。`,
     route_to_skills: routeToSkills,
     suggested_actions: suggestedActions,
-    next_command_template: inferNextCommand(results),
+    next_command_template: inferNextCommand(results, event?.text || ""),
     source: sourceList,
     _matchedSignal: `retriever:${primary.title || primary.source}`,
     _score: primary.score,
@@ -483,6 +485,8 @@ async function resolveRetrieverDocs(options) {
     return options.retrieverDocs;
   }
 
+  // Preferred cloud knowledge entrypoint is knowledge/lark-cloud-knowledge.json.
+  // Legacy docs names stay here only so older demo commands do not break.
   const candidateFiles = unique([
     options.retrieverSourcesFile,
     process.env.LARK_RETRIEVER_SOURCES_FILE,
@@ -594,23 +598,91 @@ function skillRouteBonus(chunk, preferredSkills) {
   return 2.5;
 }
 
+function nonPreferredSkillPenalty(chunk, preferredSkills) {
+  if (!preferredSkills?.size) return 0;
+  const skillName = chunk.metadata?.skillName || "";
+  if (!skillName || preferredSkills.has(skillName)) return 0;
+  return -0.8;
+}
+
+function commandIntentBonus(queryText, chunk) {
+  if (!hasSendMessageIntent(queryText)) return 0;
+  const skillName = chunk.metadata?.skillName || "";
+  const haystack = [chunk.title, chunk.source, chunk.searchText].filter(Boolean).join("\n").toLowerCase();
+  if (skillName === "lark-im" && /messages-send|\+messages-send|send a message/.test(haystack)) return 8;
+  if (skillName && skillName !== "lark-im") return -2.2;
+  return 0;
+}
+
 function inferPreferredSkills(text) {
   const normalized = normalizeSearchText(text);
   const skills = new Set();
 
-  if (/im|message|messages|chat|chat_id|open_id|群聊|消息|发消息|回复/.test(normalized)) skills.add("lark-im");
-  if (/permission|scope|auth|--as|user|bot|权限|授权|身份/.test(normalized)) skills.add("lark-shared");
-  if (/wiki|知识库|节点|space|obj_token/.test(normalized)) skills.add("lark-wiki");
-  if (/base|bitable|table|record|field|多维|字段|记录|表格/.test(normalized)) skills.add("lark-base");
-  if (/doc|docs|docx|文档|云文档/.test(normalized)) skills.add("lark-doc");
-  if (/sheet|sheets|spreadsheet|公式|单元格|电子表格/.test(normalized)) skills.add("lark-sheets");
-  if (/calendar|meeting|room|freebusy|日历|会议|会议室|日程/.test(normalized)) skills.add("lark-calendar");
-  if (/drive|file|folder|upload|download|云空间|文件|文件夹|上传|下载/.test(normalized)) skills.add("lark-drive");
-  if (/task|todo|待办|任务/.test(normalized)) skills.add("lark-task");
+  if (/im|message|messages|chat|chat_id|open_id/.test(normalized) || hasAny(normalized, IM_HINTS)) {
+    skills.add("lark-im");
+  }
+  if (/event|websocket|wsclient/.test(normalized) || hasAny(normalized, EVENT_HINTS)) {
+    skills.add("lark-event");
+  }
+  if (/permission|scope|auth|--as|user|bot/.test(normalized) || hasAny(normalized, SHARED_HINTS)) skills.add("lark-shared");
+  if (/wiki|space|obj_token/.test(normalized) || hasAny(normalized, WIKI_HINTS)) skills.add("lark-wiki");
+  if (/base|bitable|table|record|field/.test(normalized) || hasAny(normalized, BASE_HINTS)) skills.add("lark-base");
+  if (/doc|docs|docx/.test(normalized) || hasAny(normalized, DOC_HINTS)) skills.add("lark-doc");
+  if (/sheet|sheets|spreadsheet/.test(normalized) || hasAny(normalized, SHEETS_HINTS)) skills.add("lark-sheets");
+  if (/calendar|meeting|room|freebusy/.test(normalized) || hasAny(normalized, CALENDAR_HINTS)) skills.add("lark-calendar");
+  if (/drive|file|folder|upload|download/.test(normalized) || hasAny(normalized, DRIVE_HINTS)) skills.add("lark-drive");
+  if (/task|todo/.test(normalized) || hasAny(normalized, TASK_HINTS)) skills.add("lark-task");
 
   return skills;
 }
 
+const IM_HINTS = [
+  "\u7fa4\u804a",
+  "\u7fa4\u6d88\u606f",
+  "\u7fa4\u91cc",
+  "\u7fa4\u7684\u4fe1\u606f",
+  "\u7fa4\u91cc\u7684\u4fe1\u606f",
+  "\u8bfb\u53d6\u7fa4",
+  "\u8bfb\u7fa4",
+  "\u6d88\u606f",
+  "\u804a\u5929\u8bb0\u5f55",
+  "\u5386\u53f2\u6d88\u606f",
+  "\u53d1\u6d88\u606f",
+  "\u56de\u590d",
+];
+
+const SEND_MESSAGE_HINTS = [
+  "\u53d1\u6d88\u606f",
+  "\u53d1\u9001\u6d88\u606f",
+  "\u7ed9\u7fa4\u804a\u53d1\u6d88\u606f",
+  "\u7fa4\u91cc\u53d1\u6d88\u606f",
+  "\u7fa4\u91cc\u9762\u53d1\u6d88\u606f",
+  "\u5728\u7fa4\u91cc\u53d1\u6d88\u606f",
+];
+
+const EVENT_HINTS = [
+  "\u957f\u8fde\u63a5",
+  "\u4e8b\u4ef6",
+  "\u76d1\u542c",
+  "\u8ba2\u9605",
+  "\u5b9e\u65f6\u6d88\u606f",
+  "\u4e3b\u52a8\u6d88\u606f",
+  "\u63a5\u6536\u4e8b\u4ef6",
+  "\u6d88\u606f\u4e8b\u4ef6",
+];
+
+const SHARED_HINTS = ["\u6743\u9650", "\u6388\u6743", "\u8eab\u4efd"];
+const WIKI_HINTS = ["\u77e5\u8bc6\u5e93", "\u8282\u70b9"];
+const BASE_HINTS = ["\u591a\u7ef4", "\u5b57\u6bb5", "\u8bb0\u5f55", "\u8868\u683c"];
+const DOC_HINTS = ["\u6587\u6863", "\u4e91\u6587\u6863"];
+const SHEETS_HINTS = ["\u516c\u5f0f", "\u5355\u5143\u683c", "\u7535\u5b50\u8868\u683c"];
+const CALENDAR_HINTS = ["\u65e5\u5386", "\u4f1a\u8bae", "\u4f1a\u8bae\u5ba4", "\u65e5\u7a0b"];
+const DRIVE_HINTS = ["\u4e91\u7a7a\u95f4", "\u6587\u4ef6", "\u6587\u4ef6\u5939", "\u4e0a\u4f20", "\u4e0b\u8f7d"];
+const TASK_HINTS = ["\u5f85\u529e", "\u4efb\u52a1"];
+
+function hasAny(text, terms) {
+  return terms.some((term) => text.includes(term));
+}
 function buildSuggestedActions(results) {
   const actions = [
     "优先阅读召回来源中的相关段落，确认该问题属于哪个 lark-* Skill 或 CLI 命令族。",
@@ -621,7 +693,10 @@ function buildSuggestedActions(results) {
   return actions;
 }
 
-function inferNextCommand(results) {
+function inferNextCommand(results, queryText = "") {
+  if (hasSendMessageIntent(queryText) && results.some((item) => item.metadata?.skillName === "lark-im")) {
+    return 'lark-cli im +messages-send --chat-id <oc_xxx> --text "<消息内容>" --as bot';
+  }
   for (const item of results) {
     const command = extractLarkCliCommand(item.content);
     if (command) return command.trim();
@@ -631,6 +706,14 @@ function inferNextCommand(results) {
     return `lark-cli ${firstSkill.replace(/^lark-/, "")} --help`;
   }
   return "lark-cli <service> --help";
+}
+
+function hasSendMessageIntent(text) {
+  const normalized = normalizeSearchText(text);
+  return (
+    /send|messages-send|\+messages-send|\+send/.test(normalized) ||
+    hasAny(normalized, SEND_MESSAGE_HINTS)
+  );
 }
 
 function inferCloudDocTitle(doc) {

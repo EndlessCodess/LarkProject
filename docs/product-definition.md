@@ -12,6 +12,20 @@
 
 ---
 
+## 1.1 当前比赛版交付边界
+
+截至 2026-05-05，项目已经收敛为一个方向 C 的最小可运行版本：
+
+- 知识源：本地官方 `lark-*` Skill 镜像、`knowledge/lark-cli-errors.json` 结构化规则、`knowledge/lark-cloud-knowledge.json` 通用飞书云知识 manifest。
+- 主动触发：飞书官方 SDK WebSocket 长连接群事件监听、飞书群轮询补偿、CLI Watch / Shell、`lark-cli` Proxy。
+- 知识处理：规则优先，规则未命中时进入本地轻量 RAG，并可补充当前环境的 `lark-cli --help` 证据。
+- Agent 整理：LLM Composer 不承担自由聊天职责，只负责把规则、RAG 和动态 help 证据压缩成高密度知识卡。
+- 分发形态：终端 Debug Knowledge Card 与飞书群交互卡片。
+
+比赛主讲推荐聚焦两条链路：`npm run demo:competition:cli` 和 `npm run demo:competition:chat`。其他入口保留为调试或兼容用途。
+
+---
+
 ## 2. 核心理念：Skill 不是运行时代码，而是 Agent 操作手册
 
 本项目对 OpenClaw / Cursor / Codex Skill 的理解是：

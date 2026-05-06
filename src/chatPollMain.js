@@ -8,6 +8,11 @@ import { processKnowledgeEvent } from "./app/processKnowledgeEvent.js";
 
 loadProjectEnv();
 
+function defaultComposeMode() {
+  return process.env.LARK_FORCE_LLM_COMPOSE === "1" ? "llm" : process.env.LARK_COMPOSE_MODE || "template";
+}
+
+
 function parseArgs(argv) {
   const args = {
     knowledgeSource: "local",
@@ -31,7 +36,7 @@ function parseArgs(argv) {
     sourceInitMode: "baseline",
     watch: false,
     intervalMs: 5000,
-    composeMode: "template",
+    composeMode: defaultComposeMode(),
     liveHelp: true,
     liveHelpTimeoutMs: 8000,
     llmApiKey: "",
@@ -67,6 +72,7 @@ function parseArgs(argv) {
     else if (key === "--watch") args.watch = true;
     else if (key === "--interval-ms" && value) args.intervalMs = Number(argv[++i]);
     else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
+    else if (key === "--force-llm-compose") args.composeMode = "llm";
     else if (key === "--no-compose") args.composeMode = "off";
     else if (key === "--live-help") args.liveHelp = true;
     else if (key === "--no-live-help") args.liveHelp = false;

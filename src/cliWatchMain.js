@@ -10,6 +10,11 @@ import { processKnowledgeEvent } from "./app/processKnowledgeEvent.js";
 
 loadProjectEnv();
 
+function defaultComposeMode() {
+  return process.env.LARK_FORCE_LLM_COMPOSE === "1" ? "llm" : process.env.LARK_COMPOSE_MODE || "template";
+}
+
+
 function parseArgs(argv) {
   const args = {
     knowledgeSource: "local",
@@ -36,7 +41,7 @@ function parseArgs(argv) {
     preserveExitCode: false,
     stderrTailLines: 80,
     stdoutTailLines: 30,
-    composeMode: "template",
+    composeMode: defaultComposeMode(),
     liveHelp: true,
     liveHelpTimeoutMs: 8000,
     llmApiKey: "",
@@ -79,6 +84,7 @@ function parseArgs(argv) {
     else if (key === "--stderr-tail-lines" && value) args.stderrTailLines = Number(argv[++i]);
     else if (key === "--stdout-tail-lines" && value) args.stdoutTailLines = Number(argv[++i]);
     else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
+    else if (key === "--force-llm-compose") args.composeMode = "llm";
     else if (key === "--no-compose") args.composeMode = "off";
     else if (key === "--live-help") args.liveHelp = true;
     else if (key === "--no-live-help") args.liveHelp = false;

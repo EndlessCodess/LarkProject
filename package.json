@@ -13,10 +13,20 @@
     "demo:chat-event": "node src/chatEventMain.js",
     "demo:cli-watch": "node src/cliWatchMain.js",
     "demo:cli-watch-llm": "node src/demoCliWatchLlmMain.js",
+    "demo:competition:cli": "node src/demoCliWatchLlmMain.js",
+    "demo:competition:chat": "node src/chatEventMain.js",
+    "demo:cloud-calendar": "node src/main.js --source examples/lark-cloud-calendar-samples.jsonl --retriever-sources-file knowledge/lark-cloud-knowledge.json",
+    "eval": "node src/evaluateMain.js",
+    "eval:quality": "node src/evaluateMain.js --source examples/evaluation/agent-quality-cases.jsonl --output tmp/evaluation-quality-results.json --markdown tmp/evaluation-quality-report.md",
+    "eval:llm": "node src/evaluateMain.js --source examples/evaluation/llm-composer-cases.jsonl --compose-mode llm --llm-timeout-ms 90000 --output tmp/evaluation-llm-results.json --markdown tmp/evaluation-llm-report.md",
+    "eval:all": "node src/evaluationSuiteMain.js",
     "demo:cli-shell": "node src/cliWatchMain.js",
     "demo:lark-cli-proxy": "node src/larkCliProxyMain.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.62.1"
   }
 }

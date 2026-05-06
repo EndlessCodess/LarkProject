@@ -1,0 +1,83 @@
+# cloud-calendar-rag
+name: 飞书云端 Calendar Skill 文件夹参与 RAG 召回
+command: /usr/bin/node src/main.js --source examples/lark-cloud-calendar-samples.jsonl --retriever-sources-file knowledge/lark-cloud-knowledge.json --compose-mode llm --llm-timeout-ms 45000 --no-live-help --push-level all --no-quality-report
+exitCode: 0
+signal: 
+timedOut: false
+startedAt: 2026-05-05T12:27:59.513Z
+durationMs: 30812
+Loaded 1 events, 10 knowledge rules.
+Knowledge source: local
+Retriever chunks: 2985
+Auto readonly execution: disabled
+Lark card push: disabled
+
+====================================================================================================
+[CLI Knowledge Card · Debug View]
+流水线: RAG召回 -> knowledge_retrieval -> 无工具 -> manual_or_blocked -> not_executed
+
+[0] 输入上下文
+----------------------------------------------------------------------------------------
+- 事件类型: cli_error
+- 触发模式: event_driven
+- 原始文本: lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？
+
+[1] 知识获取与匹配
+----------------------------------------------------------------------------------------
+- 路径: 规则未命中 -> 本地轻量 RAG 召回
+- 错误类型: knowledge_retrieval
+- 严重级别: info
+- 匹配信号: retriever:lark-calendar 1. 预约日程/会议、查询/搜索可用会议室
+- 决策置信度: medium
+- 风险等级: unknown
+- 整理模式: llm
+- LLM 模型: ep-20260423223104-568xj
+- 检索查询: lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？ signal:retriever:lark-calendar 1. 预约日程/会议、查询/搜索可用会议室 category:knowledge_retr...
+- 召回策略: local_lightweight_retrieval
+- 召回原因: rule_miss
+- 召回数量: 5
+召回证据 Top3:
+  1. lark-calendar 1. 预约日程/会议、查询/搜索可用会议室
+     来源: https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g
+     分数: 27.6338 | 命中词: 上, 会, 作, 先, 全, 再, 只, 室
+  2. lark-calendar 1. 预约日程/会议、查询/搜索可用会议室
+     来源: /home/node/.agents/skills/lark-calendar/SKILL.md
+     分数: 27.4812 | 命中词: 上, 会, 作, 先, 全, 再, 只, 室
+  3. 预约日程/会议、查询/搜索可用会议室的工作流 overview
+     来源: https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe
+     分数: 27.2071 | 命中词: 上, 会, 作, 先, 全, 再, 参, 只
+- 关联 Skill: lark-calendar, lark-calendar-schedule-meeting
+
+[2] 诊断与建议
+----------------------------------------------------------------------------------------
+- 诊断: 用户预约会议室仅提供上午开会无明确起止时间，结构化规则未命中，已召回lark-calendar相关工作流内容，需先参考指定预约会议工作流补全时间参数
+- 建议步骤:
+  1. 优先读取references/lark-calendar-schedule-meeting.md完整工作流文档，明确时间补全规则
+  2. 按照工作流要求优先补全会议默认参数（如会议时长），将上午的模糊时间转换为明确时间范围
+  3. 若时间语义存在歧义无法补全，再主动向用户确认具体时间
+  4. 时间范围补全后再执行空闲会议室查询操作
+- 下一步命令: lark-cli calendar --help
+
+[3] Agent 动作选择
+----------------------------------------------------------------------------------------
+- 策略: present_guidance_only
+- 执行模式: manual_or_blocked
+- 下一步类型: guidance_only
+
+[4] 工具计划
+----------------------------------------------------------------------------------------
+- 状态: 无工具计划，仅输出知识建议
+
+[5] 执行结果
+----------------------------------------------------------------------------------------
+- 实际状态: not_executed
+- 归一状态: not_executed
+- 摘要: No execution summary.
+
+[6] 分发与来源
+----------------------------------------------------------------------------------------
+- 当前分发形态: terminal_local
+- 可扩展分发形态: lark_card
+- 来源: https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; /home/node/.agents/skills/lark-calendar/SKILL.md#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe#预约日程/会议、查询/搜索可用会议室的工作流 overview
+====================================================================================================
+

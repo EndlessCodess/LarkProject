@@ -1,0 +1,966 @@
+{
+  "generatedAt": "2026-05-05T14:47:03.637Z",
+  "options": {
+    "source": "examples/eval-cli-cases.jsonl",
+    "composeMode": "template",
+    "liveHelp": false,
+    "retrieverSourcesFile": "knowledge/lark-cloud-knowledge.json",
+    "showTop3": true
+  },
+  "inventory": {
+    "cases": 12,
+    "knowledgeRules": 10,
+    "retrieverChunks": 2985
+  },
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "passRate": 1,
+    "durationMs": 134
+  },
+  "metrics": {
+    "matchKindAccuracy": 1,
+    "ruleHitAccuracy": 1,
+    "routeSkillHitRate": 1,
+    "sourceHitRate": 1,
+    "composeModeAccuracy": null,
+    "averageLatencyMs": 11
+  },
+  "groups": {
+    "rule_direct": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "passRate": 1
+    },
+    "local_skill_rag": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "passRate": 1
+    },
+    "cloud_knowledge_rag": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "passRate": 1
+    },
+    "trigger_manual": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "passRate": 1
+    }
+  },
+  "records": [
+    {
+      "id": "rule-unknown-service",
+      "group": "rule_direct",
+      "text": "lark-cli docz +fetch failed: unknown service",
+      "durationMs": 6,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "rule",
+        "ruleId": "command-existence-check-first",
+        "category": "command_existence",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-shared"
+        ],
+        "topSources": [
+          "../lark-shared/SKILL.md; 当前 CLI help 实测"
+        ],
+        "topRetrieval": [],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "rule",
+        "ruleId": "command-existence-check-first",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-shared"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "rule",
+          "expected": "rule",
+          "pass": true
+        },
+        {
+          "name": "rule_id",
+          "actual": "command-existence-check-first",
+          "expected": "command-existence-check-first",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-shared",
+          "expected": "lark-shared",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "rule-missing-scope",
+      "group": "rule_direct",
+      "text": "lark-cli docs +fetch failed: permission denied, missing scope: docs:document:readonly",
+      "durationMs": 3,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "rule",
+        "ruleId": "scope-missing-user",
+        "category": "permission_scope",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-shared"
+        ],
+        "topSources": [
+          "../lark-shared/SKILL.md#权限不足处理"
+        ],
+        "topRetrieval": [],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "rule",
+        "ruleId": "scope-missing-user",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-shared"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "rule",
+          "expected": "rule",
+          "pass": true
+        },
+        {
+          "name": "rule_id",
+          "actual": "scope-missing-user",
+          "expected": "scope-missing-user",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-shared",
+          "expected": "lark-shared",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "rule-wiki-base-token",
+      "group": "rule_direct",
+      "text": "lark-cli base +table-list --base-token wikcnABC failed: param baseToken is invalid; original link is https://example.feishu.cn/wiki/wikcnABC",
+      "durationMs": 3,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "rule",
+        "ruleId": "base-wiki-token-confusion",
+        "category": "token_type",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-wiki",
+          "lark-base"
+        ],
+        "topSources": [
+          "../lark-base/SKILL.md#Token 与链接; ../lark-wiki/SKILL.md#快速决策"
+        ],
+        "topRetrieval": [],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "rule",
+        "ruleId": "base-wiki-token-confusion",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-wiki",
+          "lark-base"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "rule",
+          "expected": "rule",
+          "pass": true
+        },
+        {
+          "name": "rule_id",
+          "actual": "base-wiki-token-confusion",
+          "expected": "base-wiki-token-confusion",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-wiki, lark-base",
+          "expected": "lark-wiki OR lark-base",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "rule-shortcut-flag",
+      "group": "rule_direct",
+      "text": "lark-cli docs +fetch --api-version v2 failed: unknown flag: --api-version",
+      "durationMs": 2,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "rule",
+        "ruleId": "docs-v2-api-version-required",
+        "category": "docs_api_version",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-doc"
+        ],
+        "topSources": [
+          "../lark-doc/SKILL.md#docs-v2; 当前 CLI help 实测"
+        ],
+        "topRetrieval": [],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "rule",
+        "ruleId": "docs-v2-api-version-required",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-doc"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "rule",
+          "expected": "rule",
+          "pass": true
+        },
+        {
+          "name": "rule_id",
+          "actual": "docs-v2-api-version-required",
+          "expected": "docs-v2-api-version-required",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-doc",
+          "expected": "lark-doc",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "rag-im-route",
+      "group": "local_skill_rag",
+      "text": "lark-cli 发消息到群聊时，receive_id_type 应该选 chat_id 还是 open_id？我想知道 IM 这类消息接口应该先看哪个 Skill。",
+      "durationMs": 26,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "retrieval",
+        "ruleId": "retrieved-knowledge-skills-lark-base-references-lark-base-workflow-schema-md-workflow-数据结构参考-larkmessagetrigger",
+        "category": "knowledge_retrieval",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-base",
+          "lark-im"
+        ],
+        "topSources": [
+          "knowledge/skills/lark-base/references/lark-base-workflow-schema.md#Workflow 数据结构参考 LarkMessageTrigger; knowledge/skills/lark-base/references/lark-base-workflow-schema.md#Workflow 数据结构参考 触发器节点输出; knowledge/skills/lark-im/references/lark-im-messages-search.md#im +messages-search Commands",
+          "knowledge/skills/lark-base/references/lark-base-workflow-schema.md",
+          "knowledge/skills/lark-im/references/lark-im-messages-search.md",
+          "knowledge/skills/lark-im/SKILL.md"
+        ],
+        "topRetrieval": [
+          {
+            "title": "Workflow 数据结构参考 LarkMessageTrigger",
+            "source": "knowledge/skills/lark-base/references/lark-base-workflow-schema.md",
+            "score": 14.3001,
+            "skillName": "lark-base"
+          },
+          {
+            "title": "Workflow 数据结构参考 触发器节点输出",
+            "source": "knowledge/skills/lark-base/references/lark-base-workflow-schema.md",
+            "score": 12.8593,
+            "skillName": "lark-base"
+          },
+          {
+            "title": "im +messages-search Commands",
+            "source": "knowledge/skills/lark-im/references/lark-im-messages-search.md",
+            "score": 10.2861,
+            "skillName": "lark-im"
+          }
+        ],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "retrieval",
+        "ruleId": "",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-im"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "retrieval",
+          "expected": "retrieval",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-base, lark-im",
+          "expected": "lark-im",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "rag-drive-import",
+      "group": "local_skill_rag",
+      "text": "lark-cli 想把本地 xlsx 文件导入成多维表格，我不确定第一步应该走 base 还是 drive import。",
+      "durationMs": 18,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "retrieval",
+        "ruleId": "retrieved-knowledge-skills-lark-drive-skill-md-lark-drive-overview",
+        "category": "token_type",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-drive"
+        ],
+        "topSources": [
+          "knowledge/skills/lark-drive/SKILL.md#lark-drive overview; knowledge/skills/lark-drive/references/lark-drive-import.md#drive +import overview; knowledge/skills/lark-drive/SKILL.md#lark-drive 快速决策",
+          "knowledge/skills/lark-drive/SKILL.md",
+          "knowledge/skills/lark-drive/references/lark-drive-import.md"
+        ],
+        "topRetrieval": [
+          {
+            "title": "lark-drive overview",
+            "source": "knowledge/skills/lark-drive/SKILL.md",
+            "score": 21.2922,
+            "skillName": "lark-drive"
+          },
+          {
+            "title": "drive +import overview",
+            "source": "knowledge/skills/lark-drive/references/lark-drive-import.md",
+            "score": 19.1387,
+            "skillName": "lark-drive"
+          },
+          {
+            "title": "lark-drive 快速决策",
+            "source": "knowledge/skills/lark-drive/SKILL.md",
+            "score": 17.686,
+            "skillName": "lark-drive"
+          }
+        ],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "retrieval",
+        "ruleId": "",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-drive"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "retrieval",
+          "expected": "retrieval",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-drive",
+          "expected": "lark-drive",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "rag-doc-sheet-route",
+      "group": "local_skill_rag",
+      "text": "lark-cli 处理文档内容时发现里面嵌了 sheet token，Agent 应该只展示文档块，还是继续下钻读取电子表格？",
+      "durationMs": 14,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "retrieval",
+        "ruleId": "retrieved-knowledge-skills-lark-doc-skill-md-lark-doc-快速决策",
+        "category": "token_type",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-doc",
+          "lark-sheets",
+          "lark-drive"
+        ],
+        "topSources": [
+          "knowledge/skills/lark-doc/SKILL.md#lark-doc 快速决策; knowledge/skills/lark-sheets/SKILL.md#lark-sheets overview; knowledge/skills/lark-doc/SKILL.md#lark-doc overview",
+          "knowledge/skills/lark-doc/SKILL.md",
+          "knowledge/skills/lark-sheets/SKILL.md",
+          "knowledge/skills/lark-doc/references/lark-doc-fetch.md",
+          "knowledge/skills/lark-drive/SKILL.md"
+        ],
+        "topRetrieval": [
+          {
+            "title": "lark-doc 快速决策",
+            "source": "knowledge/skills/lark-doc/SKILL.md",
+            "score": 16.6916,
+            "skillName": "lark-doc"
+          },
+          {
+            "title": "lark-sheets overview",
+            "source": "knowledge/skills/lark-sheets/SKILL.md",
+            "score": 16.0401,
+            "skillName": "lark-sheets"
+          },
+          {
+            "title": "lark-doc overview",
+            "source": "knowledge/skills/lark-doc/SKILL.md",
+            "score": 15.1587,
+            "skillName": "lark-doc"
+          }
+        ],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "retrieval",
+        "ruleId": "",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-doc",
+          "lark-sheets"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "retrieval",
+          "expected": "retrieval",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-doc, lark-sheets, lark-drive",
+          "expected": "lark-doc OR lark-sheets",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "rag-auth-identity",
+      "group": "local_skill_rag",
+      "text": "lark-cli 遇到 user 和 bot 身份选择问题，不确定当前命令应该用用户身份还是机器人身份，应该先看哪类认证规则？",
+      "durationMs": 14,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "retrieval",
+        "ruleId": "retrieved-knowledge-skills-lark-shared-skill-md-lark-shared-overview",
+        "category": "knowledge_retrieval",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-shared",
+          "lark-slides",
+          "lark-base",
+          "lark-mail"
+        ],
+        "topSources": [
+          "knowledge/skills/lark-shared/SKILL.md#lark-shared overview; knowledge/skills/lark-slides/SKILL.md#lark-slides 身份选择; knowledge/skills/lark-base/SKILL.md#lark-base 3.5 身份选择与权限降级策略",
+          "knowledge/skills/lark-shared/SKILL.md",
+          "knowledge/skills/lark-slides/SKILL.md",
+          "knowledge/skills/lark-base/SKILL.md",
+          "knowledge/skills/lark-mail/SKILL.md"
+        ],
+        "topRetrieval": [
+          {
+            "title": "lark-shared overview",
+            "source": "knowledge/skills/lark-shared/SKILL.md",
+            "score": 20.4722,
+            "skillName": "lark-shared"
+          },
+          {
+            "title": "lark-slides 身份选择",
+            "source": "knowledge/skills/lark-slides/SKILL.md",
+            "score": 16.3267,
+            "skillName": "lark-slides"
+          },
+          {
+            "title": "lark-base 3.5 身份选择与权限降级策略",
+            "source": "knowledge/skills/lark-base/SKILL.md",
+            "score": 16.2814,
+            "skillName": "lark-base"
+          }
+        ],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "retrieval",
+        "ruleId": "",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-shared"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "retrieval",
+          "expected": "retrieval",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-shared, lark-slides, lark-base, lark-mail",
+          "expected": "lark-shared",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "cloud-calendar-room",
+      "group": "cloud_knowledge_rag",
+      "text": "lark-cli 预约会议室时，用户只给了上午开会，没有给明确起止时间。我应该先参考 calendar 哪份会议/会议室工作流，才能补全时间范围再查空闲会议室？",
+      "durationMs": 17,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "retrieval",
+        "ruleId": "retrieved-https-jcneyh7qlo8i-feishu-cn-file-bddebqpkqonzqtxvo4pc1ajhn6g-lark-calendar-1-预约日程-会议-查询-搜索可用会议室",
+        "category": "knowledge_retrieval",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-calendar",
+          "lark-calendar-schedule-meeting"
+        ],
+        "topSources": [
+          "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; /home/node/.agents/skills/lark-calendar/SKILL.md#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe#预约日程/会议、查询/搜索可用会议室的工作流 overview",
+          "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g",
+          "/home/node/.agents/skills/lark-calendar/SKILL.md",
+          "https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe"
+        ],
+        "topRetrieval": [
+          {
+            "title": "lark-calendar 1. 预约日程/会议、查询/搜索可用会议室",
+            "source": "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g",
+            "score": 27.6338,
+            "skillName": "lark-calendar"
+          },
+          {
+            "title": "lark-calendar 1. 预约日程/会议、查询/搜索可用会议室",
+            "source": "/home/node/.agents/skills/lark-calendar/SKILL.md",
+            "score": 27.4812,
+            "skillName": "lark-calendar"
+          },
+          {
+            "title": "预约日程/会议、查询/搜索可用会议室的工作流 overview",
+            "source": "https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe",
+            "score": 27.2071,
+            "skillName": "lark-calendar-schedule-meeting"
+          }
+        ],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "retrieval",
+        "ruleId": "",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-calendar"
+        ],
+        "sourceContains": [
+          "feishu.cn/file"
+        ],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "retrieval",
+          "expected": "retrieval",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-calendar, lark-calendar-schedule-meeting",
+          "expected": "lark-calendar",
+          "pass": true
+        },
+        {
+          "name": "source",
+          "actual": "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; /home/node/.agents/skills/lark-calendar/SKILL.md#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe#预约日程/会议、查询/搜索可用会议室的工作流 overview | https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g | /home/node/.agents/skills/lark-calendar/SKILL.md | https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe",
+          "expected": "feishu.cn/file",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "cloud-calendar-freebusy",
+      "group": "cloud_knowledge_rag",
+      "text": "lark-cli 做会议室可用性相关操作，但用户只说了大概时间，没有给明确起止时间，我应该先参考哪个日历工作流？",
+      "durationMs": 12,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "retrieval",
+        "ruleId": "retrieved-https-jcneyh7qlo8i-feishu-cn-file-bddebqpkqonzqtxvo4pc1ajhn6g-lark-calendar-1-预约日程-会议-查询-搜索可用会议室",
+        "category": "knowledge_retrieval",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-calendar",
+          "lark-calendar-schedule-meeting"
+        ],
+        "topSources": [
+          "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; /home/node/.agents/skills/lark-calendar/SKILL.md#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe#预约日程/会议、查询/搜索可用会议室的工作流 overview",
+          "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g",
+          "/home/node/.agents/skills/lark-calendar/SKILL.md",
+          "https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe"
+        ],
+        "topRetrieval": [
+          {
+            "title": "lark-calendar 1. 预约日程/会议、查询/搜索可用会议室",
+            "source": "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g",
+            "score": 26.1757,
+            "skillName": "lark-calendar"
+          },
+          {
+            "title": "lark-calendar 1. 预约日程/会议、查询/搜索可用会议室",
+            "source": "/home/node/.agents/skills/lark-calendar/SKILL.md",
+            "score": 26.0255,
+            "skillName": "lark-calendar"
+          },
+          {
+            "title": "预约日程/会议、查询/搜索可用会议室的工作流 overview",
+            "source": "https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe",
+            "score": 23.5419,
+            "skillName": "lark-calendar-schedule-meeting"
+          }
+        ],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "retrieval",
+        "ruleId": "",
+        "category": "",
+        "triggerMode": "",
+        "skills": [
+          "lark-calendar"
+        ],
+        "sourceContains": [
+          "feishu.cn/file"
+        ],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "retrieval",
+          "expected": "retrieval",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-calendar, lark-calendar-schedule-meeting",
+          "expected": "lark-calendar",
+          "pass": true
+        },
+        {
+          "name": "source",
+          "actual": "https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; /home/node/.agents/skills/lark-calendar/SKILL.md#lark-calendar 1. 预约日程/会议、查询/搜索可用会议室; https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe#预约日程/会议、查询/搜索可用会议室的工作流 overview | https://jcneyh7qlo8i.feishu.cn/file/BdDebqPKqonzqtxvo4Pc1AJHn6g | /home/node/.agents/skills/lark-calendar/SKILL.md | https://jcneyh7qlo8i.feishu.cn/file/KNcgbOxZEoZTNcxJ3NBcqRegnPe",
+          "expected": "feishu.cn/file",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "trigger-cli-watch-model",
+      "group": "trigger_manual",
+      "text": "lark-cli wiki --unknown-flag\nexit_code=2\nunknown flag: --unknown-flag",
+      "durationMs": 3,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "rule",
+        "ruleId": "shortcut-help-required",
+        "category": "shortcut_usage",
+        "triggerMode": "cli_watch",
+        "routeSkills": [
+          "lark-doc",
+          "lark-base",
+          "lark-sheets",
+          "lark-im",
+          "lark-task"
+        ],
+        "topSources": [
+          "各 lark-* Skill 的 Shortcuts 章节"
+        ],
+        "topRetrieval": [],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "rule",
+        "ruleId": "shortcut-help-required",
+        "category": "",
+        "triggerMode": "cli_watch",
+        "skills": [],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "rule",
+          "expected": "rule",
+          "pass": true
+        },
+        {
+          "name": "rule_id",
+          "actual": "shortcut-help-required",
+          "expected": "shortcut-help-required",
+          "pass": true
+        },
+        {
+          "name": "trigger_mode",
+          "actual": "cli_watch",
+          "expected": "cli_watch",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "trigger-chat-event",
+      "group": "trigger_manual",
+      "text": "lark-cli 遇到 user 和 bot 身份选择问题，不确定当前命令应该用用户身份还是机器人身份，应该先看哪类认证规则？",
+      "durationMs": 14,
+      "pass": true,
+      "summary": "all checks passed",
+      "actual": {
+        "matched": true,
+        "matchKind": "retrieval",
+        "ruleId": "retrieved-knowledge-skills-lark-shared-skill-md-lark-shared-overview",
+        "category": "knowledge_retrieval",
+        "triggerMode": "event_driven",
+        "routeSkills": [
+          "lark-shared",
+          "lark-slides",
+          "lark-base",
+          "lark-mail"
+        ],
+        "topSources": [
+          "knowledge/skills/lark-shared/SKILL.md#lark-shared overview; knowledge/skills/lark-slides/SKILL.md#lark-slides 身份选择; knowledge/skills/lark-base/SKILL.md#lark-base 3.5 身份选择与权限降级策略",
+          "knowledge/skills/lark-shared/SKILL.md",
+          "knowledge/skills/lark-slides/SKILL.md",
+          "knowledge/skills/lark-base/SKILL.md",
+          "knowledge/skills/lark-mail/SKILL.md"
+        ],
+        "topRetrieval": [
+          {
+            "title": "lark-shared overview",
+            "source": "knowledge/skills/lark-shared/SKILL.md",
+            "score": 20.4722,
+            "skillName": "lark-shared"
+          },
+          {
+            "title": "lark-slides 身份选择",
+            "source": "knowledge/skills/lark-slides/SKILL.md",
+            "score": 16.3267,
+            "skillName": "lark-slides"
+          },
+          {
+            "title": "lark-base 3.5 身份选择与权限降级策略",
+            "source": "knowledge/skills/lark-base/SKILL.md",
+            "score": 16.2814,
+            "skillName": "lark-base"
+          }
+        ],
+        "composeMode": "template",
+        "composeModel": "",
+        "diagnosis": "",
+        "pushStatus": "disabled"
+      },
+      "expected": {
+        "matchKind": "retrieval",
+        "ruleId": "",
+        "category": "",
+        "triggerMode": "event_driven",
+        "skills": [
+          "lark-shared"
+        ],
+        "sourceContains": [],
+        "composeMode": ""
+      },
+      "checks": [
+        {
+          "name": "matched",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "name": "match_kind",
+          "actual": "retrieval",
+          "expected": "retrieval",
+          "pass": true
+        },
+        {
+          "name": "trigger_mode",
+          "actual": "event_driven",
+          "expected": "event_driven",
+          "pass": true
+        },
+        {
+          "name": "route_skill",
+          "actual": "lark-shared, lark-slides, lark-base, lark-mail",
+          "expected": "lark-shared",
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

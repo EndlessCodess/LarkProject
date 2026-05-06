@@ -1,0 +1,86 @@
+{
+  "generatedAt": "2026-05-05T12:28:30.335Z",
+  "startedAt": "2026-05-05T12:26:35.989Z",
+  "durationMs": 114346,
+  "total": 3,
+  "passed": 3,
+  "failed": 0,
+  "pushEnabled": false,
+  "results": [
+    {
+      "id": "cli-command-llm-card",
+      "name": "单条终端命令触发 LLM 知识卡",
+      "ok": true,
+      "skipped": false,
+      "timedOut": false,
+      "exitCode": 0,
+      "signal": "",
+      "durationMs": 45877,
+      "logFile": "tmp/e2e/no-push/cli-command-llm-card.log",
+      "checks": [
+        {
+          "needle": "[demo:cli-watch-llm] running end-to-end demo",
+          "ok": true
+        },
+        {
+          "needle": "[cli-watch] candidate",
+          "ok": true
+        },
+        {
+          "needle": "[CLI Knowledge Card",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "cli-shell-manual-stdin",
+      "name": "Agent Shell 手动输入命令触发知识卡",
+      "ok": true,
+      "skipped": false,
+      "timedOut": false,
+      "exitCode": 0,
+      "signal": "",
+      "durationMs": 37645,
+      "logFile": "tmp/e2e/no-push/cli-shell-manual-stdin.log",
+      "checks": [
+        {
+          "needle": "[cli-watch] Agent shell started",
+          "ok": true
+        },
+        {
+          "needle": "[cli-watch] run: lark-cli wiki --unknown-flag",
+          "ok": true
+        },
+        {
+          "needle": "[CLI Knowledge Card",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "cloud-calendar-rag",
+      "name": "飞书云端 Calendar Skill 文件夹参与 RAG 召回",
+      "ok": true,
+      "skipped": false,
+      "timedOut": false,
+      "exitCode": 0,
+      "signal": "",
+      "durationMs": 30822,
+      "logFile": "tmp/e2e/no-push/cloud-calendar-rag.log",
+      "checks": [
+        {
+          "needle": "lark-calendar",
+          "ok": true
+        },
+        {
+          "needle": "召回证据",
+          "ok": true
+        },
+        {
+          "needle": "feishu.cn/file",
+          "ok": true
+        }
+      ]
+    }
+  ]
+}
