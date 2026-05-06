@@ -56,11 +56,13 @@ LARK_DEMO_PUSH_CHAT_ID=oc_xxx
 LARK_DEMO_PUSH_AS=bot
 LARK_DEMO_LLM_TIMEOUT_MS=45000
 LARK_FORCE_LLM_COMPOSE=0
+LARK_CARD_VIEW=release
 
 LARK_EVENT_SOURCE=sdk
 LARK_APP_ID=cli_xxx
 LARK_APP_SECRET=xxx
 LARK_SDK_LOG_LEVEL=info
+LARK_CLI_AGENT_NAMES=飞书 CLI,飞书CLI,CLI 智能体,cli智能体
 
 LARK_RETRIEVER_SOURCES_FILE=knowledge/lark-cloud-knowledge.json
 LARK_DOCS_CACHE_FILE=tmp/lark-docs-cache.json
@@ -73,7 +75,9 @@ LARK_RETRIEVER_DISABLE_INSTALLED_SKILLS=0
 - `.env` 已在 `.gitignore` 中，不应提交真实密钥。
 - `ARK_*` 用于真实 LLM Composer。
 - `LARK_FORCE_LLM_COMPOSE=1`：可将主链路知识卡整理强制切到 LLM，等价于每次运行都加 `--force-llm-compose`。
+- `LARK_CARD_VIEW=release|debug`：控制飞书知识卡展示密度。默认 `release` 适合日常和演示，`debug` 会展开召回证据、上下文和执行摘要。
 - `LARK_EVENT_SOURCE=sdk` 表示群事件默认使用官方 Node SDK WebSocket 长连接。
+- `LARK_CLI_AGENT_NAMES`：用于识别群消息里 @ 的 CLI 智能体名称。只要消息 @ 命中这些名称，就会强制进入知识卡链路。
 - `LARK_RETRIEVER_DISABLE_INSTALLED_SKILLS=1` 可用于验证“纯云端知识召回”，避免回退到本机 `~/.agents/skills`。
 
 ## 推荐测试顺序
@@ -287,6 +291,7 @@ tmp/evaluation-llm-results.json
 - `--retriever-docs-file <path>`：旧参数，仅用于兼容历史命令。
 - `--lark-cli-timeout-ms <ms>`：调用 `lark-cli` 的超时时间。
 - `--debug-lark-cli`：打印底层 `lark-cli` 调用调试信息。
+- `--card-view <release|debug>`：飞书知识卡展示模式，默认 `release`。排查召回和上下文时使用 `--card-view debug`。
 
 ### 本地样例入口参数
 

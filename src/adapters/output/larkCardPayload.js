@@ -27,6 +27,10 @@ function formatStatus(actualStatus, effectiveStatus) {
   return `${actualStatus} → ${effectiveStatus}`;
 }
 
+function normalizeCardView(view) {
+  return String(view || "release").toLowerCase() === "debug" ? "debug" : "release";
+}
+
 function buildCategoryMeta(category) {
   const metaMap = {
     command_existence: {
@@ -108,23 +112,49 @@ function buildRetrievalBlock(retrieval) {
     .join("\n");
 }
 
-export function buildLarkCardPayload({ decision, outcome, context }) {
-  const category = decision?.match?.category || "unknown";
-  const categoryMeta = buildCategoryMeta(category);
-  const suggestions = toActionList(decision?.guidance?.suggestedActions || []);
-  const skills = decision?.guidance?.routeToSkills || [];
-  const nextCommand = decision?.guidance?.nextCommand || "-";
-  const matchedSignal = decision?.match?.matchedSignal || "-";
-  const diagnosis = decision?.diagnosis || "No diagnosis provided.";
-  const riskLevel = decision?.policy?.riskLevel || "unknown";
-  const confidence = decision?.match?.confidence || "unknown";
-  const effectiveStatus = outcome?.effectiveStatus || "unknown";
-  const actualStatus = outcome?.actualStatus || "unknown";
-  const summary = outcome?.summary || "No execution summary.";
-  const severity = decision?.match?.severity || "unknown";
-  const mode = decision?.trigger?.mode || "event_driven";
-  const retrievalBlock = buildRetrievalBlock(decision?.match?.retrieval);
+function buildCompactEvidenceLine(retrieval) {
+  const results = retrieval?.results || [];
+  if (!results.length) return "";
+  return results
+    .slice(0, 2)
+    .map((item, index) => `${index + 1}. ${truncate(item.title, 34)}`)
+    .join("\n");
+}
 
+function buildReleaseSummary({ confidence, actualStatus, effectiveStatus, matchedSignal }) {
+  return [
+    `- 信号：\`${truncate(matchedSignal, 56)}\``,
+    `- 置信度：${confidence}`,
+    `- 状态：${formatStatus(actualStatus, effectiveStatus)}`,
+  ].join("\n");
+}
+
+function buildReleaseDiagnosis(diagnosis, suggestions, retrieval) {
+  const blocks = [truncate(diagnosis, 180)];
+  if (suggestions.length) blocks.push(suggestions.slice(0, 2).join("\n"));
+  const compactEvidence = buildCompactEvidenceLine(retrieval);
+  if (compactEvidence) blocks.push(`命中依据\n${compactEvidence}`);
+  return blocks.join("\n\n");
+}
+
+function buildDebugElements(payload) {
+  const {
+    categoryMeta,
+    riskLevel,
+    confidence,
+    actualStatus,
+    effectiveStatus,
+    matchedSignal,
+    diagnosis,
+    suggestions,
+    nextCommand,
+    summary,
+    severity,
+    mode,
+    retrievalBlock,
+    skills,
+    context,
+  } = payload;
   const elements = [
     {
       tag: "markdown",
@@ -178,6 +208,101 @@ export function buildLarkCardPayload({ decision, outcome, context }) {
   );
 
   return {
+    elements,
+  };
+}
+
+function buildReleaseElements(payload) {
+  const {
+    categoryMeta,
+    confidence,
+    actualStatus,
+    effectiveStatus,
+    matchedSignal,
+    diagnosis,
+    suggestions,
+    nextCommand,
+    severity,
+    retrieval,
+    skills,
+    mode,
+  } = payload;
+
+  const elements = [
+    {
+      tag: "markdown",
+      content: `**${categoryMeta.icon} ${categoryMeta.shortTag}**\n${categoryMeta.focus}`,
+    },
+    {
+      tag: "markdown",
+      content: `**快速判断**\n${buildReleaseSummary({ confidence, actualStatus, effectiveStatus, matchedSignal })}`,
+    },
+  ];
+
+  const priorityBanner = buildPriorityBanner(severity, diagnosis);
+  if (priorityBanner) {
+    elements.push(priorityBanner);
+  }
+
+  elements.push(
+    {
+      tag: "markdown",
+      content: `**处理建议**\n${buildReleaseDiagnosis(diagnosis, suggestions, retrieval)}`,
+    },
+    {
+      tag: "markdown",
+      content: `**建议命令**\n\`\`\`bash\n${nextCommand}\n\`\`\``,
+    },
+    {
+      tag: "markdown",
+      content: buildMetaLine(skills, mode),
+    },
+  );
+
+  return {
+    elements,
+  };
+}
+
+export function buildLarkCardPayload({ decision, outcome, context, options = {} }) {
+  const category = decision?.match?.category || "unknown";
+  const categoryMeta = buildCategoryMeta(category);
+  const suggestions = toActionList(decision?.guidance?.suggestedActions || []);
+  const skills = decision?.guidance?.routeToSkills || [];
+  const nextCommand = decision?.guidance?.nextCommand || "-";
+  const matchedSignal = decision?.match?.matchedSignal || "-";
+  const diagnosis = decision?.diagnosis || "No diagnosis provided.";
+  const riskLevel = decision?.policy?.riskLevel || "unknown";
+  const confidence = decision?.match?.confidence || "unknown";
+  const effectiveStatus = outcome?.effectiveStatus || "unknown";
+  const actualStatus = outcome?.actualStatus || "unknown";
+  const summary = outcome?.summary || "No execution summary.";
+  const severity = decision?.match?.severity || "unknown";
+  const mode = decision?.trigger?.mode || "event_driven";
+  const retrieval = decision?.match?.retrieval;
+  const retrievalBlock = buildRetrievalBlock(retrieval);
+  const cardView = normalizeCardView(options.cardView);
+  const viewPayload = {
+    categoryMeta,
+    riskLevel,
+    confidence,
+    actualStatus,
+    effectiveStatus,
+    matchedSignal,
+    diagnosis,
+    suggestions,
+    nextCommand,
+    summary,
+    severity,
+    mode,
+    retrieval,
+    retrievalBlock,
+    skills,
+    context,
+  };
+  const { elements } = cardView === "debug" ? buildDebugElements(viewPayload) : buildReleaseElements(viewPayload);
+
+  return {
     schema: "2.0",
     config: {
       wide_screen_mode: true,
@@ -191,7 +316,7 @@ export function buildLarkCardPayload({ decision, outcome, context }) {
       },
       subtitle: {
         tag: "plain_text",
-        content: `${formatSeverityLabel(severity)} · ${mode}`,
+        content: `${formatSeverityLabel(severity)} · ${mode} · ${cardView}`,
       },
     },
     body: {

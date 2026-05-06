@@ -54,7 +54,17 @@ export async function runDemo(options) {
     const action = selectAction(decision, options);
     const toolExecution = await maybeExecuteToolPlan(action.toolPlan, options, picked);
     const effectiveStatus = inferEffectiveStatus(toolExecution?.status || "not_executed", toolExecution?.plannedStatus);
-    const larkCardPayload = buildLarkCardPayload({ decision, action, outcome: { actualStatus: toolExecution?.status || "not_executed", effectiveStatus, summary: toolExecution?.summary || "No execution summary." }, context: event.text });
+    const larkCardPayload = buildLarkCardPayload({
+      decision,
+      action,
+      outcome: {
+        actualStatus: toolExecution?.status || "not_executed",
+        effectiveStatus,
+        summary: toolExecution?.summary || "No execution summary.",
+      },
+      context: event.text,
+      options,
+    });
     const larkCardArtifactFile = await writeLarkCardArtifact(larkCardPayload, options);
     const pushResult = await maybePushLarkCard(larkCardPayload, options, decision, event.text);
     const outcome = buildOutcome({

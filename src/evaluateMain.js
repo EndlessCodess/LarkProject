@@ -12,6 +12,9 @@ function defaultComposeMode() {
   return process.env.LARK_FORCE_LLM_COMPOSE === "1" ? "llm" : process.env.LARK_COMPOSE_MODE || "template";
 }
 
+function defaultCardView() {
+  return process.env.LARK_CARD_VIEW || "release";
+}
 
 function parseArgs(argv) {
   const args = {
@@ -22,6 +25,7 @@ function parseArgs(argv) {
     output: "tmp/evaluation-results.json",
     markdown: "tmp/evaluation-report.md",
     composeMode: defaultComposeMode(),
+    cardView: defaultCardView(),
     liveHelp: false,
     larkCliTimeoutMs: 30000,
     llmApiKey: "",
@@ -45,6 +49,7 @@ function parseArgs(argv) {
     else if (key === "--output" && value) args.output = argv[++i];
     else if (key === "--markdown" && value) args.markdown = argv[++i];
     else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
+    else if (key === "--card-view" && value) args.cardView = argv[++i];
     else if (key === "--force-llm-compose") args.composeMode = "llm";
     else if (key === "--no-compose") args.composeMode = "off";
     else if (key === "--live-help") args.liveHelp = true;

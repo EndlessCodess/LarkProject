@@ -100,7 +100,7 @@
     "bypassDedupe": true
   },
   "98d428ee83b84cffff3718ab1ea7c2361af64459": {
-    "sentAt": 1778008732763,
+    "sentAt": 1778057440961,
     "ruleId": "retrieved-knowledge-skills-lark-im-references-lark-im-messages-send-md-im-messages-send-commands",
     "matchedSignal": "retriever:im +messages-send Commands",
     "severity": "info",
@@ -114,6 +114,46 @@
     "ruleId": "retrieved-skills-lark-cli-knowledge-assistant-skill-md-lark-cli-knowledge-assistant-overview",
     "matchedSignal": "retriever:lark-cli-knowledge-assistant overview",
     "severity": "warning",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "aceaa84f24e4dc4e24c94b06f09435336d188925": {
+    "sentAt": 1778058414967,
+    "ruleId": "retrieved-knowledge-skills-lark-im-references-lark-im-messages-send-md-im-messages-send-commands",
+    "matchedSignal": "retriever:im +messages-send Commands",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "ddf7a230ccc0b26c8b771e00285fdae07f070625": {
+    "sentAt": 1778058852627,
+    "ruleId": "retrieved-home-node-agents-skills-lark-calendar-skill-md-lark-calendar-overview",
+    "matchedSignal": "retriever:lark-calendar overview",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "7be6a7fad993ef2554b7e19bac3e8e2fea3079f5": {
+    "sentAt": 1778059439566,
+    "ruleId": "retrieved-home-node-agents-skills-lark-calendar-skill-md-lark-calendar-overview",
+    "matchedSignal": "retriever:lark-calendar overview",
+    "severity": "info",
+    "riskLevel": "unknown",
+    "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
+    "bypassPolicy": false,
+    "bypassDedupe": true
+  },
+  "10168e7db207b431638cdbfabe8d638c6d9805da": {
+    "sentAt": 1778059624489,
+    "ruleId": "retrieved-knowledge-skills-lark-mail-skill-md-lark-mail-使用公共邮箱或别名-send-as-发信",
+    "matchedSignal": "retriever:lark-mail 使用公共邮箱或别名（send_as）发信",
+    "severity": "info",
     "riskLevel": "unknown",
     "chatId": "oc_d32c2e3e2eb66b2efca3ef677620233e",
     "bypassPolicy": false,

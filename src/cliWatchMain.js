@@ -14,6 +14,9 @@ function defaultComposeMode() {
   return process.env.LARK_FORCE_LLM_COMPOSE === "1" ? "llm" : process.env.LARK_COMPOSE_MODE || "template";
 }
 
+function defaultCardView() {
+  return process.env.LARK_CARD_VIEW || "release";
+}
 
 function parseArgs(argv) {
   const args = {
@@ -33,6 +36,7 @@ function parseArgs(argv) {
     pushDedupeFile: "tmp/push-dedupe-state.json",
     pushBypassPolicy: false,
     pushBypassDedupe: false,
+    cardView: defaultCardView(),
     command: "",
     cwd: process.cwd(),
     shell: defaultShell(),
@@ -74,6 +78,7 @@ function parseArgs(argv) {
     else if (key === "--push-dedupe-file" && value) args.pushDedupeFile = argv[++i];
     else if (key === "--push-bypass-policy") args.pushBypassPolicy = true;
     else if (key === "--push-bypass-dedupe") args.pushBypassDedupe = true;
+    else if (key === "--card-view" && value) args.cardView = argv[++i];
     else if (key === "--command" && value) args.command = argv[++i];
     else if (key === "--cwd" && value) args.cwd = argv[++i];
     else if (key === "--shell" && value) args.shell = argv[++i];

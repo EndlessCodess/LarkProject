@@ -14,6 +14,9 @@ function defaultComposeMode() {
   return process.env.LARK_FORCE_LLM_COMPOSE === "1" ? "llm" : process.env.LARK_COMPOSE_MODE || "template";
 }
 
+function defaultCardView() {
+  return process.env.LARK_CARD_VIEW || "release";
+}
 
 function parseArgs(argv) {
   const args = {
@@ -30,6 +33,7 @@ function parseArgs(argv) {
     pushDedupeFile: "tmp/push-dedupe-state.json",
     pushBypassPolicy: false,
     pushBypassDedupe: false,
+    cardView: defaultCardView(),
     sourceChatId: "",
     eventSource: process.env.LARK_EVENT_SOURCE || "lark-cli",
     appId: process.env.LARK_APP_ID || "",
@@ -72,6 +76,7 @@ function parseArgs(argv) {
     else if (key === "--push-dedupe-file" && value) args.pushDedupeFile = argv[++i];
     else if (key === "--push-bypass-policy") args.pushBypassPolicy = true;
     else if (key === "--push-bypass-dedupe") args.pushBypassDedupe = true;
+    else if (key === "--card-view" && value) args.cardView = argv[++i];
     else if (key === "--source-chat-id" && value) args.sourceChatId = argv[++i];
     else if (key === "--event-source" && value) args.eventSource = argv[++i];
     else if (key === "--app-id" && value) args.appId = argv[++i];
@@ -123,8 +128,52 @@ function normalizeMessageText(item) {
   return "";
 }
 
+function getMessageContentObject(item) {
+  const rawContent = item?.content || item?.message?.content;
+  if (typeof rawContent !== "string") return null;
+  return safeParseJson(rawContent);
+}
+
 function getMessageId(item) {
   return String(item?.message_id || item?.messageId || item?.id || item?.message?.message_id || "");
+}
+
+function getMessageMentions(item) {
+  const contentObject = getMessageContentObject(item);
+  return [
+    ...(Array.isArray(item?.mentions) ? item.mentions : []),
+    ...(Array.isArray(item?.message?.mentions) ? item.message.mentions : []),
+    ...(Array.isArray(contentObject?.mentions) ? contentObject.mentions : []),
+  ];
+}
+
+function isCliAgentMention(item, text = "") {
+  const normalizedText = String(text || "").toLowerCase();
+  if (/@\s*飞书\s*cli/i.test(normalizedText) || /@\s*cli\s*智能体/i.test(normalizedText)) return true;
+
+  const names = (process.env.LARK_CLI_AGENT_NAMES || "飞书 CLI,飞书CLI,CLI 智能体,cli智能体")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  const mentions = getMessageMentions(item);
+
+  return mentions.some((mention) => {
+    const values = [
+      mention?.name,
+      mention?.text,
+      mention?.key,
+      mention?.id?.name,
+      mention?.user_name,
+      mention?.tenant_key,
+    ]
+      .map((value) => String(value || "").toLowerCase())
+      .filter(Boolean);
+    return values.some((value) => names.some((name) => value.includes(name)));
+  });
+}
+
+function shouldTriggerKnowledge(item, text) {
+  return isCliAgentMention(item, text) || looksLikeCliError(text);
 }
 
 function looksLikeCliError(text) {
@@ -198,7 +247,7 @@ function isBotSelfMessage(item, options) {
 function toEvent(item, options) {
   if (isBotSelfMessage(item, options)) return null;
   const text = normalizeMessageText(item);
-  if (!text || !looksLikeCliError(text)) return null;
+  if (!text || !shouldTriggerKnowledge(item, text)) return null;
   return {
     type: "cli_error",
     text,
@@ -371,7 +420,7 @@ async function handleIncomingEvent(item, kb, retriever, options) {
     return;
   }
 
-  if (!looksLikeCliError(text)) {
+  if (!shouldTriggerKnowledge(item, text)) {
     console.log(`[chat-event] skip non-cli signal: ${resolvedMessageId} ${text.slice(0, 80)}`);
     return;
   }

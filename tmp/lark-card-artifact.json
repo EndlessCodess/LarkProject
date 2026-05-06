@@ -5,14 +5,14 @@
     "enable_forward": true
   },
   "header": {
-    "template": "orange",
+    "template": "blue",
     "title": {
       "tag": "plain_text",
-      "content": "⚠️ CLI 主动知识卡 · 通用诊断"
+      "content": "💡 CLI 主动知识卡 · 通用诊断"
     },
     "subtitle": {
       "tag": "plain_text",
-      "content": "中优先级 · event_driven"
+      "content": "低优先级 · event_driven · release"
     }
   },
   "body": {
@@ -21,38 +21,23 @@
     "elements": [
       {
         "tag": "markdown",
-        "content": "**💡 通用 CLI 诊断**\n先确认命令、权限和上下文，再继续执行。"
+        "content": "**💡 通用诊断**\n先确认命令、权限和上下文，再继续执行。"
       },
       {
         "tag": "markdown",
-        "content": "**概览**\n- 风险：unknown\n- 置信度：medium\n- 状态：not_executed\n- 信号：`retriever:lark-cli-knowledge-assistant overview`"
+        "content": "**快速判断**\n- 信号：`retriever:lark-mail 使用公共邮箱或别名（send_as）发信`\n- 置信度：medium\n- 状态：not_executed"
       },
       {
         "tag": "markdown",
-        "content": "**结论与处理**\n结构化规则未直接命中，已从本地知识库召回lark-cli相关内容，当前lark-cli contact search-user报错大概率是命令不存在、未完成初始化配置或参数错误导致\n\n1. 先执行lark-cli config init完成lark-cli的基础配置初始化\n2. 执行lark-cli contact --help查看contact模块支持的合法命令，确认search-user命令是否存在\n3. 若需查询用户信息，可使用已验证的lark-cli contact +get-user系列合法命令操作"
+        "content": "**处理建议**\n结构化规则未直接命中，已从本地知识库召回与飞书邮箱调用相关的内容，当前覆盖使用公共邮箱或别名（send_as）发信的操作场景。\n\n1. 使用公共邮箱/别名发信时，可通过--mailbox参数指定目标邮箱、--from参数指定发件人地址实现非主账号地址发信\n2. 先执行可访问邮箱查询命令，确认你有权限使用的邮箱列表\n\n命中依据\n1. lark-mail 使用公共邮箱或别名（send_as）发信\n2. lark-mail overview"
       },
       {
         "tag": "markdown",
-        "content": "**建议命令**\n```bash\nlark-cli config init\n```"
+        "content": "**建议命令**\n```bash\nlark-cli mail user_mailboxes accessible_mailboxes --params '{\"user_mailbox_id\":\"me\"}'\n```"
       },
       {
         "tag": "markdown",
-        "content": "**执行摘要**\n来自事件订阅监听消息，当前仅做知识卡主动触发演示。"
-      },
-      {
-        "tag": "markdown",
-        "content": "**召回证据**\n1. lark-cli-knowledge-assistant overview\n来源：skills/lark-cli-knowledge-assistant/SKILL.md\n匹配：lark-cli, 么, 什, 况, 情, 报 | score=4.922\n2. lark-shared overview\n来源：knowledge/skills/lark-shared/SKILL.md\n匹配：lark-cli, 错 | score=4.568\n3. contact +get-user（获取用户信息） 命令\n来源：knowledge/skills/lark-contact/references/lark-contact-get-user.md\n匹配：contact, lark-cli | score=4.5464"
-      },
-      {
-        "tag": "hr"
-      },
-      {
-        "tag": "markdown",
-        "content": "**上下文（节选）**\n```\nlark-cli contact search-user报错是什么情况呢？\n```"
-      },
-      {
-        "tag": "markdown",
-        "content": "Skill：lark-cli-knowledge-assistant, lark-shared, lark-contact | 模式：event_driven"
+        "content": "Skill：lark-mail | 模式：event_driven"
       }
     ]
   }

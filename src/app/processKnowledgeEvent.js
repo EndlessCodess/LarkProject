@@ -48,6 +48,7 @@ export async function processKnowledgeEvent({
     action,
     outcome: outcomeDraft,
     context: event.text,
+    options,
   });
   const larkCardArtifactFile = await writeLarkCardArtifact(larkCardPayload, options);
   const pushResult = await maybePushLarkCard(larkCardPayload, options, decision, event.text);

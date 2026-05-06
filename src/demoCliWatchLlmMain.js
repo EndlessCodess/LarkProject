@@ -9,6 +9,7 @@ function parseArgs(argv) {
     pushChatId: process.env.LARK_DEMO_PUSH_CHAT_ID || "",
     pushAs: process.env.LARK_DEMO_PUSH_AS || "bot",
     pushLevel: "all",
+    cardView: process.env.LARK_CARD_VIEW || "release",
     llmTimeoutMs: Number(process.env.LARK_DEMO_LLM_TIMEOUT_MS || 45000),
     liveHelp: false,
     retrieverSourcesFile: process.env.LARK_RETRIEVER_SOURCES_FILE || "",
@@ -23,6 +24,7 @@ function parseArgs(argv) {
     else if (key === "--push-chat-id" && value) args.pushChatId = argv[++i];
     else if (key === "--push-as" && value) args.pushAs = argv[++i];
     else if (key === "--push-level" && value) args.pushLevel = argv[++i];
+    else if (key === "--card-view" && value) args.cardView = argv[++i];
     else if (key === "--llm-timeout-ms" && value) args.llmTimeoutMs = Number(argv[++i]);
     else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
     else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
@@ -76,6 +78,8 @@ function buildCliWatchArgs(options) {
     String(Math.max(1000, Number(options.llmTimeoutMs || 45000))),
     "--push-level",
     options.pushLevel || "all",
+    "--card-view",
+    options.cardView || "release",
     "--push-bypass-dedupe",
   ];
 
