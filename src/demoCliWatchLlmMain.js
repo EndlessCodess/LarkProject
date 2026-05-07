@@ -14,6 +14,7 @@ function parseArgs(argv) {
     liveHelp: false,
     retrieverSourcesFile: process.env.LARK_RETRIEVER_SOURCES_FILE || "",
     retrieverDocsFile: process.env.LARK_RETRIEVER_DOCS_FILE || "",
+    retrieverMode: process.env.LARK_RETRIEVER_MODE || "keyword",
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -28,6 +29,7 @@ function parseArgs(argv) {
     else if (key === "--llm-timeout-ms" && value) args.llmTimeoutMs = Number(argv[++i]);
     else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
     else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
+    else if (key === "--retriever-mode" && value) args.retrieverMode = argv[++i];
     else if (key === "--live-help") args.liveHelp = true;
     else if (key === "--no-live-help") args.liveHelp = false;
   }
@@ -92,6 +94,9 @@ function buildCliWatchArgs(options) {
 
   if (options.retrieverDocsFile) {
     args.push("--retriever-docs-file", options.retrieverDocsFile);
+  }
+  if (options.retrieverMode) {
+    args.push("--retriever-mode", options.retrieverMode);
   }
 
   if (options.pushChatId) {

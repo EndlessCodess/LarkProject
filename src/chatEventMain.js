@@ -24,6 +24,7 @@ function parseArgs(argv) {
     knowledge: "knowledge/lark-cli-errors.json",
     retrieverSourcesFile: "",
     retrieverDocsFile: "",
+    retrieverMode: process.env.LARK_RETRIEVER_MODE || "keyword",
     debugLarkCli: false,
     pushLarkCard: false,
     pushChatId: "",
@@ -67,6 +68,7 @@ function parseArgs(argv) {
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
     else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
     else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
+    else if (key === "--retriever-mode" && value) args.retrieverMode = argv[++i];
     else if (key === "--debug-lark-cli") args.debugLarkCli = true;
     else if (key === "--push-lark-card") args.pushLarkCard = true;
     else if (key === "--push-chat-id" && value) args.pushChatId = argv[++i];
@@ -398,6 +400,7 @@ async function warnOnOtherSubscribers(options) {
 }
 
 async function handleIncomingEvent(item, kb, retriever, options) {
+
   const resolvedChatId = item?.chat_id || item?.chatId || item?.message?.chat_id || options?.sourceChatId || "";
   const resolvedMessageId = getMessageId(item) || "<no-message-id>";
   const previewText = normalizeMessageText(item).slice(0, 120);
@@ -514,6 +517,10 @@ async function main() {
   const retriever = await buildKnowledgeRetriever(options, kb);
   console.log(`[chat-event] knowledge rules: ${kb.items.length}`);
   console.log(`[chat-event] retriever chunks: ${retriever.meta.chunkCount}`);
+  if (retriever.meta.vector) {
+    console.log(`[chat-event] retriever vector: enabled=${Boolean(retriever.meta.vector.enabled)} embedded=${retriever.meta.vector.embeddedCount || 0}/${retriever.meta.vector.chunkCount || retriever.meta.chunkCount}`);
+    if (retriever.meta.vector.error) console.log(`[chat-event] retriever vector error: ${retriever.meta.vector.error}`);
+  }
 
   await warnOnOtherSubscribers(options);
 

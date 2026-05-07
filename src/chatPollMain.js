@@ -22,6 +22,7 @@ function parseArgs(argv) {
     knowledge: "knowledge/lark-cli-errors.json",
     retrieverSourcesFile: "",
     retrieverDocsFile: "",
+    retrieverMode: process.env.LARK_RETRIEVER_MODE || "keyword",
     larkCliTimeoutMs: 30000,
     debugLarkCli: false,
     pushLarkCard: false,
@@ -58,6 +59,7 @@ function parseArgs(argv) {
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
     else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
     else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
+    else if (key === "--retriever-mode" && value) args.retrieverMode = argv[++i];
     else if (key === "--lark-cli-timeout-ms" && value) args.larkCliTimeoutMs = Number(argv[++i]);
     else if (key === "--debug-lark-cli") args.debugLarkCli = true;
     else if (key === "--push-lark-card") args.pushLarkCard = true;
@@ -349,6 +351,10 @@ async function runPollOnce(options) {
   }
   console.log(`[chat-poll] knowledge rules: ${kb.items.length}`);
   console.log(`[chat-poll] retriever chunks: ${retriever.meta.chunkCount}`);
+  if (retriever.meta.vector) {
+    console.log(`[chat-poll] retriever vector: enabled=${Boolean(retriever.meta.vector.enabled)} embedded=${retriever.meta.vector.embeddedCount || 0}/${retriever.meta.vector.chunkCount || retriever.meta.chunkCount}`);
+    if (retriever.meta.vector.error) console.log(`[chat-poll] retriever vector error: ${retriever.meta.vector.error}`);
+  }
 
   let matchedCount = 0;
   let sentCount = 0;

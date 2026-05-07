@@ -1,4 +1,17 @@
 node_modules/
+
+# Local secrets and machine-specific environment overrides.
 .env
-.DS_Store
+.env.*
+!.env.example
+
+# Generated runtime state, caches, logs, evaluation reports, and large vector stores.
+tmp/
+*.log
 npm-debug.log*
+
+# OS / editor noise.
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json

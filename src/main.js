@@ -19,6 +19,7 @@ function parseArgs(argv) {
     docs: [],
     retrieverSourcesFile: "",
     retrieverDocsFile: "",
+    retrieverMode: process.env.LARK_RETRIEVER_MODE || "keyword",
     larkCliTimeoutMs: 30000,
     autoReadonly: false,
     debugLarkCli: false,
@@ -56,6 +57,7 @@ function parseArgs(argv) {
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
     else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
     else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
+    else if (key === "--retriever-mode" && value) args.retrieverMode = argv[++i];
     else if (key === "--lark-doc" && value) {
       args.docs.push({ url: argv[++i], apiVersion: "v2", mode: "full", as: "user" });
     } else if (key === "--lark-doc-mode" && value) {

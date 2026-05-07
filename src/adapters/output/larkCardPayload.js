@@ -123,18 +123,29 @@ function buildCompactEvidenceLine(retrieval) {
 
 function buildReleaseSummary({ confidence, actualStatus, effectiveStatus, matchedSignal }) {
   return [
-    `- 信号：\`${truncate(matchedSignal, 56)}\``,
     `- 置信度：${confidence}`,
     `- 状态：${formatStatus(actualStatus, effectiveStatus)}`,
   ].join("\n");
 }
 
 function buildReleaseDiagnosis(diagnosis, suggestions, retrieval) {
-  const blocks = [truncate(diagnosis, 180)];
+  const blocks = [truncate(sanitizeReleaseDiagnosis(diagnosis), 180)];
   if (suggestions.length) blocks.push(suggestions.slice(0, 2).join("\n"));
   const compactEvidence = buildCompactEvidenceLine(retrieval);
-  if (compactEvidence) blocks.push(`命中依据\n${compactEvidence}`);
+  if (compactEvidence) blocks.push(`参考资料\n${compactEvidence}`);
   return blocks.join("\n\n");
+}
+
+function sanitizeReleaseDiagnosis(diagnosis) {
+  const text = String(diagnosis || "").replace(/\s+/g, " ").trim();
+  if (!text) return "请先根据下方建议确认命令、参数或权限设置。";
+
+  return text
+    .replace(/^结构化规则未直接命中，已从本地知识库召回[^，。；]*[，。；]?\s*/u, "")
+    .replace(/^已从本地知识库召回[^，。；]*[，。；]?\s*/u, "")
+    .replace(/^命令\s*`?[^`，。；]+`?\s*没有直接命中结构化规则[，。；]?\s*/u, "")
+    .replace(/^当前执行的/u, "当前命令")
+    .trim();
 }
 
 function buildDebugElements(payload) {
@@ -265,6 +276,7 @@ function buildReleaseElements(payload) {
 }
 
 export function buildLarkCardPayload({ decision, outcome, context, options = {} }) {
+
   const category = decision?.match?.category || "unknown";
   const categoryMeta = buildCategoryMeta(category);
   const suggestions = toActionList(decision?.guidance?.suggestedActions || []);

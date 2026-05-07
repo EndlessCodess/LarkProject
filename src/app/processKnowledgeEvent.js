@@ -23,7 +23,7 @@ export async function processKnowledgeEvent({
   renderTerminal = true,
   outcomeSummary = "No execution summary.",
 }) {
-  const picked = pickKnowledge(event, kb.items, retriever);
+  const picked = await pickKnowledge(event, kb.items, retriever, options);
 
   if (!picked) {
     if (noMatchMode === "render") renderNoMatch(event);
@@ -63,7 +63,7 @@ export async function processKnowledgeEvent({
   });
 
   if (renderTerminal) {
-    renderTerminalCard({ decision, action, outcome, source: picked.source || "", context: event.text });
+    renderTerminalCard({ decision, action, outcome, source: picked.source || "", context: event.text, cardView: options.cardView });
   }
 
   return {
@@ -77,11 +77,12 @@ export async function processKnowledgeEvent({
   };
 }
 
-export function pickKnowledge(event, knowledgeItems, retriever) {
+export async function pickKnowledge(event, knowledgeItems, retriever, options = {}) {
+
   const direct = matchKnowledge(event, knowledgeItems);
   if (direct) return direct;
 
-  const retrievalResults = retrieveKnowledge(event, retriever, { topK: 5 });
+  const retrievalResults = await retrieveKnowledge(event, retriever, { topK: 5, retrieverMode: options.retrieverMode });
   return buildRetrievedKnowledgeRule(event, retrievalResults);
 }
 

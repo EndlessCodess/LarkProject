@@ -5,6 +5,7 @@ const DEFAULT_TIMEOUT_MS = 20000;
 const DEFAULT_TEMPERATURE = 0.2;
 
 export async function composeWithLlm(input, options = {}) {
+
   const config = resolveLlmConfig(options);
   if (!config.apiKey) {
     return {
@@ -141,6 +142,7 @@ export function resolveLlmConfig(options = {}) {
 }
 
 function buildChatCompletionRequest(input, config) {
+
   const body = {
     model: config.model,
     temperature: config.temperature,

@@ -30,7 +30,7 @@ export async function runDemo(options) {
   console.log(`Lark card push: ${options.pushLarkCard ? `enabled -> ${options.pushChatId || "<missing chat_id>"}` : "disabled"}\n`);
 
   for (const event of events) {
-    const picked = await pickKnowledge(event, kb.items, retriever);
+    const picked = await pickKnowledge(event, kb.items, retriever, options);
 
     if (!picked) {
       renderNoMatch(event);
@@ -77,7 +77,7 @@ export async function runDemo(options) {
       pushResult,
     });
 
-    renderTerminalCard({ decision, action, outcome, source: picked.source || "", context: event.text });
+    renderTerminalCard({ decision, action, outcome, source: picked.source || "", context: event.text, cardView: options.cardView });
     regression.push(buildRegressionRecord(event, picked, action.toolPlan, toolExecution));
   }
 
@@ -128,11 +128,11 @@ async function maybePushLarkCard(payload, options, decision, context) {
   }
 }
 
-async function pickKnowledge(event, knowledgeItems, retriever) {
+async function pickKnowledge(event, knowledgeItems, retriever, options = {}) {
   const direct = matchKnowledge(event, knowledgeItems);
   if (direct) return direct;
 
-  const retrievalResults = retrieveKnowledge(event, retriever, { topK: 5 });
+  const retrievalResults = await retrieveKnowledge(event, retriever, { topK: 5, retrieverMode: options.retrieverMode });
   return buildRetrievedKnowledgeRule(event, retrievalResults);
 }
 

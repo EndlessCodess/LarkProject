@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import crypto from "node:crypto";
 import { expandLarkDocsManifest, fetchLarkDocsDocuments } from "../../adapters/knowledge-source/larkDocsKnowledgeSource.js";
 
 const DEFAULT_SKILL_NAMES = [
@@ -52,8 +53,24 @@ const STOP_WORDS = new Set([
 ]);
 
 export async function buildKnowledgeRetriever(options = {}, knowledge = {}) {
+
   const chunks = await buildKnowledgeChunks(options, knowledge);
-  return createRetrieverIndex(chunks);
+  const index = createRetrieverIndex(chunks);
+  if (isVectorRetrieverMode(options.retrieverMode || process.env.LARK_RETRIEVER_MODE)) {
+    try {
+      await attachVectorStore(index, options);
+    } catch (error) {
+      index.vector = {
+        enabled: false,
+        error: error.message,
+      };
+      index.meta.vector = {
+        enabled: false,
+        error: error.message,
+      };
+    }
+  }
+  return index;
 }
 
 export async function buildKnowledgeChunks(options = {}, knowledge = {}) {
@@ -68,7 +85,8 @@ export async function buildKnowledgeChunks(options = {}, knowledge = {}) {
   return [...ruleChunks, ...projectSkillChunks, ...bundledLarkSkillChunks, ...installedLarkSkillChunks, ...cloudDocChunks];
 }
 
-export function retrieveKnowledge(query, index, options = {}) {
+export async function retrieveKnowledge(query, index, options = {}) {
+
   const chunks = Array.isArray(index?.chunks) ? index.chunks : [];
   if (!chunks.length) return [];
 
@@ -78,10 +96,12 @@ export function retrieveKnowledge(query, index, options = {}) {
 
   const queryTermSet = new Set(queryTerms);
   const preferredSkills = inferPreferredSkills(queryText);
+  const mode = normalizeRetrieverMode(options.retrieverMode || process.env.LARK_RETRIEVER_MODE || "keyword");
+  const queryEmbedding = isVectorRetrieverMode(mode) ? await embedQuery(queryText, index, options) : null;
   const scored = [];
 
   for (const chunk of chunks) {
-    let score = 0;
+    let keywordScore = 0;
     const matchedTerms = [];
 
     for (const term of queryTermSet) {
@@ -89,31 +109,40 @@ export function retrieveKnowledge(query, index, options = {}) {
       if (!frequency) continue;
       const idf = index.idf.get(term) || 1;
       const termScore = (frequency / Math.sqrt(chunk.termTotal || 1)) * idf;
-      score += termScore;
+      keywordScore += termScore;
       matchedTerms.push(term);
     }
 
-    score += phraseBonus(queryText, chunk.searchText);
-    score += sourceTypeBonus(chunk);
-    score += skillRouteBonus(chunk, preferredSkills);
-    score += nonPreferredSkillPenalty(chunk, preferredSkills);
-    score += commandIntentBonus(queryText, chunk);
+    keywordScore += phraseBonus(queryText, chunk.keywordText || chunk.searchText);
+    const routeBonus = buildRouteBonus(queryText, chunk, preferredSkills);
+    const legacyScore = keywordScore + routeBonus;
+    const semanticScore = buildSemanticScore({ mode, queryText, queryTerms, chunk, queryEmbedding });
 
-    if (score > 0) {
+    if (legacyScore > 0 || semanticScore > 0) {
       scored.push({
         source_type: chunk.source_type,
         source: chunk.source,
         title: chunk.title,
         content: chunk.content,
-        score: Number(score.toFixed(4)),
+        score: Number(legacyScore.toFixed(4)),
         matched_terms: matchedTerms.sort(),
         metadata: chunk.metadata || {},
+        _debugScore: {
+          mode,
+          keywordRaw: Number(keywordScore.toFixed(4)),
+          semanticRaw: Number(semanticScore.toFixed(4)),
+          routeBonusRaw: Number(routeBonus.toFixed(4)),
+        },
       });
     }
   }
 
+  if (isHybridRetrieverMode(mode)) {
+    applyHybridScores(scored, queryText, mode);
+  }
+
   const topK = Number(options.topK || 5);
-  const minScore = Number(options.minScore || 0.35);
+  const minScore = Number(options.minScore || (isHybridRetrieverMode(mode) ? 0.08 : 0.35));
   return scored
     .sort((a, b) => b.score - a.score)
     .filter((item) => item.score >= minScore)
@@ -125,6 +154,7 @@ export function buildRetrievedKnowledgeRule(event, retrievalResults, options = {
   if (!results.length) return null;
 
   const primary = results[0];
+  const retrieverMode = primary?.metadata?.retrieverMode || "keyword";
   const routeToSkills = unique(
     results
       .map((item) => item.metadata?.skillName)
@@ -150,6 +180,8 @@ export function buildRetrievedKnowledgeRule(event, retrievalResults, options = {
     _score: primary.score,
     _retrieval: {
       strategy: "local_lightweight_retrieval",
+      retrieverMode,
+      queryText: typeof event === "string" ? event : event?.text || "",
       reason: options.reason || "rule_miss",
       results: results.slice(0, 5),
     },
@@ -159,10 +191,12 @@ export function buildRetrievedKnowledgeRule(event, retrievalResults, options = {
 export function createRetrieverIndex(chunks) {
   const normalizedChunks = chunks.map((chunk) => {
     const searchText = normalizeSearchText([chunk.title, chunk.content, chunk.source, chunk.metadata?.skillName].filter(Boolean).join("\n"));
-    const terms = tokenize(searchText);
+    const keywordText = normalizeSearchText(buildChunkKeywordText(chunk));
+    const terms = tokenize(keywordText);
     return {
       ...chunk,
       searchText,
+      keywordText,
       termCounts: countTerms(terms),
       termTotal: terms.length,
     };
@@ -343,14 +377,20 @@ function markdownToChunks(raw, metadata) {
   });
 
   for (const section of sections) {
-    for (const part of splitLongText(section.content, 1600)) {
+    for (const part of splitLongText(section.content, 1600, { overlapParagraphs: 1 })) {
       chunks.push({
-        id: `skill:${metadata.skillName}:${sanitizeId(section.heading)}:${chunks.length}`,
+        id: `skill:${metadata.skillName}:${sanitizeId(section.headingPath || section.heading)}:${chunks.length}`,
         source_type: metadata.source_type,
         source: metadata.source,
-        title: `${title} ${section.heading}`.trim(),
+        title: `${title} ${section.headingPath || section.heading}`.trim(),
         content: part,
-        metadata: { ...metadata, section: section.heading, description },
+        metadata: {
+          ...metadata,
+          section: section.heading,
+          sectionPath: section.headingPath || section.heading,
+          headingLevel: section.level || null,
+          description,
+        },
       });
     }
   }
@@ -378,13 +418,32 @@ function splitFrontmatter(raw) {
 function splitMarkdownSections(body) {
   const lines = body.split(/\r?\n/);
   const sections = [];
-  let current = { heading: firstHeading(body) || "intro", content: "" };
+  const headingStack = [];
+  let current = {
+    heading: firstHeading(body) || "intro",
+    headingPath: firstHeading(body) || "intro",
+    level: 1,
+    content: "",
+  };
 
   for (const line of lines) {
     const heading = line.match(/^(#{2,4})\s+(.+)$/);
     if (heading) {
       if (current.content.trim()) sections.push(current);
-      current = { heading: heading[2].trim(), content: line };
+      const level = heading[1].length;
+      const title = heading[2].trim();
+
+      while (headingStack.length && headingStack[headingStack.length - 1].level >= level) {
+        headingStack.pop();
+      }
+      headingStack.push({ level, title });
+
+      current = {
+        heading: title,
+        headingPath: headingStack.map((item) => item.title).join(" > "),
+        level,
+        content: line,
+      };
       continue;
     }
     current.content += `${line}\n`;
@@ -394,18 +453,23 @@ function splitMarkdownSections(body) {
   return sections;
 }
 
-function splitLongText(text, maxLength) {
+function splitLongText(text, maxLength, options = {}) {
   if (text.length <= maxLength) return [text.trim()];
   const paragraphs = text.split(/\n{2,}/);
   const parts = [];
   let current = "";
+  const overlapParagraphs = Math.max(0, Number(options.overlapParagraphs || 0));
+  let currentParagraphs = [];
 
   for (const paragraph of paragraphs) {
     if ((current.length + paragraph.length + 2) > maxLength && current.trim()) {
       parts.push(current.trim());
-      current = "";
+      const overlap = overlapParagraphs > 0 ? currentParagraphs.slice(-overlapParagraphs) : [];
+      currentParagraphs = [...overlap];
+      current = overlap.length ? `${overlap.join("\n\n")}\n\n` : "";
     }
     current += `${paragraph}\n\n`;
+    currentParagraphs.push(paragraph);
   }
 
   if (current.trim()) parts.push(current.trim());
@@ -544,19 +608,54 @@ async function fileExists(filePath) {
 
 function tokenize(text) {
   const normalized = normalizeSearchText(text);
-  return (normalized.match(/[a-z0-9_:+.-]+|[\u4e00-\u9fff]/g) || [])
+  const asciiTerms = normalized.match(/[a-z0-9_:+.-]+/g) || [];
+  const chineseTerms = extractChineseKeywordTerms(normalized);
+  return [...asciiTerms, ...chineseTerms]
     .map((term) => term.trim())
-    .filter((term) => term.length > 1 || /[\u4e00-\u9fff]/.test(term))
+    .filter((term) => term.length > 1)
     .filter((term) => !STOP_WORDS.has(term));
 }
 
 function normalizeSearchText(text) {
   return String(text || "")
     .toLowerCase()
+    .replace(/@_user_\d+/g, " ")
+    .replace(/<at\b[^>]*>.*?<\/at>/g, " ")
     .replace(/[`"'“”‘’]/g, " ")
     .replace(/[(){}[\],;，。！？、]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function buildChunkKeywordText(chunk) {
+  const sourceBase = path.basename(chunk.source || "", path.extname(chunk.source || ""));
+  const commands = extractCandidateCommands(chunk.content || "");
+  return [
+    chunk.metadata?.skillName,
+    chunk.title,
+    chunk.metadata?.section,
+    sourceBase,
+    commands.join("\n"),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function extractChineseKeywordTerms(text) {
+  const runs = text.match(/[\u4e00-\u9fff]{2,}/g) || [];
+  const terms = [];
+
+  for (const run of runs) {
+    if (run.length <= 4) terms.push(run);
+    const maxGram = Math.min(4, run.length);
+    for (let size = 2; size <= maxGram; size++) {
+      for (let i = 0; i <= run.length - size; i++) {
+        terms.push(run.slice(i, i + size));
+      }
+    }
+  }
+
+  return unique(terms);
 }
 
 function countTerms(terms) {
@@ -576,6 +675,15 @@ function phraseBonus(queryText, searchText) {
   return bonus;
 }
 
+function extractCandidateCommands(text) {
+  const raw = String(text || "");
+  const commands = [
+    ...(raw.match(/lark-cli\s+[a-z0-9_+-]+(?:\s+[a-z0-9_+.-]+){0,6}/gi) || []),
+    ...(raw.match(/\+[a-z0-9_-]+/gi) || []),
+  ];
+  return unique(commands.map((item) => item.trim()));
+}
+
 function extractPhrases(text) {
   const phrases = [];
   const commandMatches = text.match(/lark-cli\s+[a-z0-9_+-]+(?:\s+[a-z0-9_+.-]+){0,3}/g) || [];
@@ -588,7 +696,10 @@ function extractPhrases(text) {
 function sourceTypeBonus(chunk) {
   if (chunk.source_type === "rule") return 0.15;
   if (chunk.source_type === "skill") return 0.08;
-  if (chunk.source_type === "cloud_doc") return 0.18;
+  // Cloud docs are an explicit enterprise knowledge entrypoint. When cloud
+  // content duplicates an installed Skill, prefer exposing at least one cloud
+  // source in the evidence list so demos can prove cloud knowledge integration.
+  if (chunk.source_type === "cloud_doc") return 3;
   return 0;
 }
 
@@ -608,30 +719,412 @@ function nonPreferredSkillPenalty(chunk, preferredSkills) {
 function commandIntentBonus(queryText, chunk) {
   if (!hasSendMessageIntent(queryText)) return 0;
   const skillName = chunk.metadata?.skillName || "";
-  const haystack = [chunk.title, chunk.source, chunk.searchText].filter(Boolean).join("\n").toLowerCase();
+  const haystack = [chunk.title, chunk.source, chunk.keywordText || chunk.searchText].filter(Boolean).join("\n").toLowerCase();
   if (skillName === "lark-im" && /messages-send|\+messages-send|send a message/.test(haystack)) return 8;
+  if (skillName === "lark-im" && /message|messages|reply|chat|im\s/.test(haystack)) return 4.5;
+  if (skillName === "lark-base" && /workflow|schema|trigger/.test(haystack)) return -3.5;
   if (skillName && skillName !== "lark-im") return -2.2;
   return 0;
 }
 
+function driveImportIntentBonus(queryText, chunk) {
+  if (!hasDriveImportIntent(queryText)) return 0;
+  const skillName = chunk.metadata?.skillName || "";
+  const haystack = [chunk.title, chunk.source, chunk.keywordText || chunk.searchText].filter(Boolean).join("\n").toLowerCase();
+  if (skillName === "lark-drive" && /drive|import|\+import|upload|file|folder|cloud/.test(haystack)) return 8;
+  if (skillName === "lark-drive") return 4;
+  if (["lark-doc", "lark-base", "lark-sheets"].includes(skillName)) return -2;
+  return 0;
+}
+
+function buildRouteBonus(queryText, chunk, preferredSkills) {
+  return (
+    sourceTypeBonus(chunk) +
+    skillRouteBonus(chunk, preferredSkills) +
+    nonPreferredSkillPenalty(chunk, preferredSkills) +
+    chatMessageIntentBonus(queryText, chunk) +
+    commandIntentBonus(queryText, chunk) +
+    driveImportIntentBonus(queryText, chunk)
+  );
+}
+
+function normalizeRetrieverMode(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (["hybrid-vector", "vector", "embedding", "embeddings"].includes(normalized)) return "hybrid-vector";
+  if (normalized === "hybrid") return "hybrid";
+  return "keyword";
+}
+
+function isHybridRetrieverMode(mode) {
+  return mode === "hybrid" || mode === "hybrid-vector";
+}
+
+function isVectorRetrieverMode(mode) {
+  return normalizeRetrieverMode(mode) === "hybrid-vector";
+}
+
+function applyHybridScores(scored, queryText, mode) {
+
+  const weights = inferHybridWeights(queryText);
+  const maxKeyword = maxDebugScore(scored, "keywordRaw");
+  const maxSemantic = maxDebugScore(scored, "semanticRaw");
+
+  for (const item of scored) {
+    const keywordNorm = normalizePositive(item._debugScore.keywordRaw, maxKeyword);
+    const semanticNorm = normalizePositive(item._debugScore.semanticRaw, maxSemantic);
+    const routeBonusNorm = normalizeRouteBonus(item._debugScore.routeBonusRaw);
+    const finalScore = (keywordNorm * weights.keyword) + (semanticNorm * weights.semantic) + routeBonusNorm;
+
+    item.score = Number(finalScore.toFixed(4));
+    item.metadata = {
+      ...(item.metadata || {}),
+      retrieverMode: mode,
+      retrieverScore: {
+        keyword: Number(keywordNorm.toFixed(4)),
+        semantic: Number(semanticNorm.toFixed(4)),
+        routeBonus: Number(routeBonusNorm.toFixed(4)),
+        keywordWeight: weights.keyword,
+        semanticWeight: weights.semantic,
+      },
+    };
+  }
+}
+
+function buildSemanticScore({ mode, queryText, queryTerms, chunk, queryEmbedding }) {
+  if (mode === "hybrid-vector" && queryEmbedding && Array.isArray(chunk._embedding)) {
+    return cosineSimilarity(queryEmbedding, chunk._embedding);
+  }
+  if (isHybridRetrieverMode(mode)) return semanticLiteScore(queryText, queryTerms, chunk);
+  return 0;
+}
+
+async function attachVectorStore(index, options = {}) {
+  
+  const config = resolveEmbeddingConfig(options);
+  index.vector = {
+    enabled: false,
+    provider: config.provider,
+    model: config.model,
+    storeFile: config.storeFile,
+    queryCache: new Map(),
+    error: "",
+  };
+
+  if (!config.apiKey) {
+    index.vector.error = "missing embedding api key";
+    index.meta.vector = {
+      enabled: false,
+      provider: config.provider,
+      model: config.model,
+      storeFile: config.storeFile,
+      embeddedCount: 0,
+      chunkCount: index.chunks.length,
+      error: index.vector.error,
+    };
+    return;
+  }
+
+  const store = await readVectorStore(config);
+  let changed = false;
+  const missing = [];
+
+  for (const chunk of index.chunks) {
+    const vectorKey = buildVectorKey(chunk, config);
+    chunk._vectorKey = vectorKey;
+    const cached = store.items?.[vectorKey];
+    if (Array.isArray(cached?.embedding) && cached.embedding.length) {
+      chunk._embedding = cached.embedding;
+      continue;
+    }
+    missing.push({ chunk, vectorKey });
+  }
+
+  const batchSize = Math.max(1, Number(options.embeddingBatchSize || process.env.ARK_EMBEDDING_BATCH_SIZE || config.batchSize));
+  for (let i = 0; i < missing.length; i += batchSize) {
+    const batch = missing.slice(i, i + batchSize);
+    const texts = batch.map(({ chunk }) => buildEmbeddingText(chunk));
+    const embeddings = await embedTexts(texts, config);
+
+    embeddings.forEach((embedding, indexInBatch) => {
+      const target = batch[indexInBatch];
+      if (!Array.isArray(embedding) || !embedding.length) return;
+      target.chunk._embedding = embedding;
+      store.items[target.vectorKey] = {
+        embedding,
+        source: target.chunk.source,
+        title: target.chunk.title,
+        updatedAt: new Date().toISOString(),
+      };
+      changed = true;
+    });
+  }
+
+  if (changed) await writeVectorStore(config, store);
+
+  const embeddedCount = index.chunks.filter((chunk) => Array.isArray(chunk._embedding)).length;
+  index.vector.enabled = embeddedCount > 0;
+  index.vector.embeddedCount = embeddedCount;
+  index.meta.vector = {
+    enabled: index.vector.enabled,
+    provider: config.provider,
+    model: config.model,
+    storeFile: config.storeFile,
+    embeddedCount,
+    chunkCount: index.chunks.length,
+  };
+}
+
+async function embedQuery(queryText, index, options = {}) {
+
+  if (!index?.vector?.enabled) return null;
+  const config = resolveEmbeddingConfig(options);
+  if (!config.apiKey) return null;
+
+  const queryInput = buildEmbeddingQueryText(queryText, config);
+  const cacheKey = stableHash(`${config.model}\nquery\n${queryInput}`);
+  if (index.vector.queryCache?.has(cacheKey)) return index.vector.queryCache.get(cacheKey);
+
+  try {
+    const [embedding] = await embedTexts([queryInput], config);
+    if (!Array.isArray(embedding) || !embedding.length) return null;
+    index.vector.queryCache?.set(cacheKey, embedding);
+    return embedding;
+  } catch {
+    return null;
+  }
+}
+
+function resolveEmbeddingConfig(options = {}) {
+  const baseUrl = String(options.embeddingBaseUrl || process.env.ARK_EMBEDDING_BASE_URL || process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/+$/, "");
+  const model = options.embeddingModel || process.env.ARK_EMBEDDING_MODEL || "doubao-embedding-vision-250615";
+  const mode = inferEmbeddingRequestMode({ model, url: options.embeddingUrl || process.env.ARK_EMBEDDING_URL || "" });
+  const defaultUrl = mode === "multimodal" ? `${baseUrl}/embeddings/multimodal` : `${baseUrl}/embeddings`;
+  return {
+    provider: "ark",
+    apiKey: options.embeddingApiKey || process.env.ARK_EMBEDDING_API_KEY || process.env.ARK_API_KEY || "",
+    model,
+    mode,
+    url: options.embeddingUrl || process.env.ARK_EMBEDDING_URL || defaultUrl,
+    batchSize: mode === "multimodal" ? 1 : 16,
+    storeFile: path.resolve(options.vectorStoreFile || process.env.LARK_RETRIEVER_VECTOR_STORE_FILE || "tmp/retriever-vector-store.json"),
+    timeoutMs: Number(options.embeddingTimeoutMs || process.env.ARK_EMBEDDING_TIMEOUT_MS || 60000),
+    encodingFormat: options.embeddingEncodingFormat || process.env.ARK_EMBEDDING_ENCODING_FORMAT || "float",
+    queryInstruction:
+      options.embeddingQueryInstruction ||
+      process.env.ARK_EMBEDDING_QUERY_INSTRUCTION ||
+      "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery: ",
+  };
+}
+
+function inferEmbeddingRequestMode({ model, url }) {
+  const text = `${model || ""} ${url || ""}`.toLowerCase();
+  if (/multimodal|vision/.test(text)) return "multimodal";
+  return "text";
+}
+
+async function readVectorStore(config) {
+  try {
+    const parsed = JSON.parse(await fs.readFile(config.storeFile, "utf8"));
+    if (parsed?.model === config.model && parsed?.provider === config.provider && parsed?.items && typeof parsed.items === "object") {
+      return parsed;
+    }
+  } catch {
+    // Missing or stale vector store is expected on first run.
+  }
+
+  return {
+    version: 1,
+    provider: config.provider,
+    model: config.model,
+    generatedAt: new Date().toISOString(),
+    items: {},
+  };
+}
+
+async function writeVectorStore(config, store) {
+  await fs.mkdir(path.dirname(config.storeFile), { recursive: true });
+  await fs.writeFile(config.storeFile, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+}
+
+async function embedTexts(texts, config) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.timeoutMs);
+
+  try {
+    const response = await fetch(config.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify(buildEmbeddingRequestBody(texts, config)),
+      signal: controller.signal,
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(body?.error?.message || body?.message || `embedding request failed: ${response.status}`);
+    }
+    const embeddings = parseEmbeddingResponse(body);
+    if (embeddings.length !== texts.length) {
+      throw new Error(`embedding response count mismatch: expected ${texts.length}, actual ${embeddings.length}`);
+    }
+    return embeddings;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function buildEmbeddingRequestBody(texts, config) {
+  if (config.mode === "multimodal") {
+    return {
+      model: config.model,
+      input: texts.map((text) => ({ type: "text", text })),
+    };
+  }
+
+  return {
+    model: config.model,
+    input: texts,
+    encoding_format: config.encodingFormat,
+  };
+}
+
+function buildEmbeddingQueryText(queryText, config) {
+  if (config.mode === "multimodal") return queryText;
+  const instruction = String(config.queryInstruction || "");
+  if (!instruction) return queryText;
+  return `${instruction}${queryText}`;
+}
+
+function parseEmbeddingResponse(body) {
+  if (Array.isArray(body?.data)) {
+    return body.data.map((item) => item.embedding || item?.embeddings?.[0]).filter(Boolean);
+  }
+  if (Array.isArray(body?.data?.embedding)) return [body.data.embedding];
+  if (Array.isArray(body?.embedding)) return [body.embedding];
+  if (Array.isArray(body?.embeddings)) return body.embeddings;
+  return [];
+}
+
+function buildVectorKey(chunk, config) {
+  return stableHash([config.provider, config.model, chunk.id, chunk.source, chunk.title, chunk.content].join("\n"));
+}
+
+function buildEmbeddingText(chunk) {
+  return [chunk.metadata?.skillName, chunk.title, chunk.source, chunk.content]
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 6000);
+}
+
+function stableHash(value) {
+  return crypto.createHash("sha256").update(String(value)).digest("hex");
+}
+
+function cosineSimilarity(left, right) {
+  let dot = 0;
+  let leftNorm = 0;
+  let rightNorm = 0;
+  const length = Math.min(left.length, right.length);
+  for (let i = 0; i < length; i++) {
+    const a = Number(left[i]) || 0;
+    const b = Number(right[i]) || 0;
+    dot += a * b;
+    leftNorm += a * a;
+    rightNorm += b * b;
+  }
+  if (!leftNorm || !rightNorm) return 0;
+  return dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
+}
+
+function inferHybridWeights(queryText) {
+  const normalized = normalizeSearchText(queryText);
+  const hasExplicitCommand = /\blark-cli\s+[a-z0-9_-]+|\s--[a-z0-9_-]+|\+[a-z0-9_-]+/.test(normalized);
+  if (hasExplicitCommand) return { keyword: 0.7, semantic: 0.3 };
+
+  const hasCliDomainToken = /\b(api|schema|event|websocket|bot|user|chat_id|open_id|obj_token|tenant_access_token)\b/.test(normalized);
+  if (hasCliDomainToken) return { keyword: 0.6, semantic: 0.4 };
+
+  return { keyword: 0.5, semantic: 0.5 };
+}
+
+function maxDebugScore(scored, key) {
+  return Math.max(0, ...scored.map((item) => Number(item._debugScore?.[key] || 0)));
+}
+
+function normalizePositive(value, maxValue) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0 || maxValue <= 0) return 0;
+  return Math.min(1, number / maxValue);
+}
+
+function normalizeRouteBonus(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number === 0) return 0;
+  if (number > 0) return Math.min(0.16, number / 30);
+  return Math.max(-0.08, number / 20);
+}
+
+function semanticLiteScore(queryText, queryTerms, chunk) {
+  const queryTermSet = new Set(queryTerms);
+  if (!queryTermSet.size) return 0;
+
+  let coveredTerms = 0;
+  for (const term of queryTermSet) {
+    if (chunk.termCounts.has(term)) coveredTerms += 1;
+  }
+
+  const coverage = coveredTerms / queryTermSet.size;
+  const phraseCoverage = semanticPhraseCoverage(queryText, chunk.searchText);
+  const titleCoverage = semanticTitleCoverage(queryTermSet, chunk.title);
+  return (coverage * 0.65) + (phraseCoverage * 0.25) + (titleCoverage * 0.1) + skillIntentSemanticBoost(queryText, chunk);
+}
+
+function skillIntentSemanticBoost(queryText, chunk) {
+  const skillName = chunk.metadata?.skillName || "";
+  if (hasReadChatMessageIntent(queryText) && skillName === "lark-im") return 1;
+  if (hasSendMessageIntent(queryText) && skillName === "lark-im") return 1;
+  return 0;
+}
+
+function semanticPhraseCoverage(queryText, searchText) {
+  const phrases = extractPhrases(queryText).filter((phrase) => phrase.length >= 4);
+  if (!phrases.length) return 0;
+  const hits = phrases.filter((phrase) => searchText.includes(normalizeSearchText(phrase))).length;
+  return hits / phrases.length;
+}
+
+function semanticTitleCoverage(queryTermSet, title) {
+  const titleTerms = new Set(tokenize(title));
+  if (!titleTerms.size) return 0;
+
+  let hits = 0;
+  for (const term of queryTermSet) {
+    if (titleTerms.has(term)) hits += 1;
+  }
+  return hits / Math.max(1, Math.min(queryTermSet.size, titleTerms.size));
+}
+
 function inferPreferredSkills(text) {
   const normalized = normalizeSearchText(text);
+  const tokenSet = new Set(tokenize(normalized));
   const skills = new Set();
 
-  if (/im|message|messages|chat|chat_id|open_id/.test(normalized) || hasAny(normalized, IM_HINTS)) {
+  if (/im|message|messages|chat|chat_id|open_id/.test(normalized) || hasAny(normalized, IM_HINTS) || hasTokenHint(tokenSet, IM_HINTS)) {
     skills.add("lark-im");
   }
-  if (/event|websocket|wsclient/.test(normalized) || hasAny(normalized, EVENT_HINTS)) {
+  if (/event|websocket|wsclient/.test(normalized) || hasAny(normalized, EVENT_HINTS) || hasTokenHint(tokenSet, EVENT_HINTS)) {
     skills.add("lark-event");
   }
-  if (/permission|scope|auth|--as|user|bot/.test(normalized) || hasAny(normalized, SHARED_HINTS)) skills.add("lark-shared");
-  if (/wiki|space|obj_token/.test(normalized) || hasAny(normalized, WIKI_HINTS)) skills.add("lark-wiki");
-  if (/base|bitable|table|record|field/.test(normalized) || hasAny(normalized, BASE_HINTS)) skills.add("lark-base");
-  if (/doc|docs|docx/.test(normalized) || hasAny(normalized, DOC_HINTS)) skills.add("lark-doc");
-  if (/sheet|sheets|spreadsheet/.test(normalized) || hasAny(normalized, SHEETS_HINTS)) skills.add("lark-sheets");
-  if (/calendar|meeting|room|freebusy/.test(normalized) || hasAny(normalized, CALENDAR_HINTS)) skills.add("lark-calendar");
-  if (/drive|file|folder|upload|download/.test(normalized) || hasAny(normalized, DRIVE_HINTS)) skills.add("lark-drive");
-  if (/task|todo/.test(normalized) || hasAny(normalized, TASK_HINTS)) skills.add("lark-task");
+  if (/permission|scope|auth|--as|user|bot/.test(normalized) || hasAny(normalized, SHARED_HINTS) || hasTokenHint(tokenSet, SHARED_HINTS)) skills.add("lark-shared");
+  if (/wiki|space|obj_token/.test(normalized) || hasAny(normalized, WIKI_HINTS) || hasTokenHint(tokenSet, WIKI_HINTS)) skills.add("lark-wiki");
+  if (/base|bitable|table|record|field/.test(normalized) || hasAny(normalized, BASE_HINTS) || hasTokenHint(tokenSet, BASE_HINTS)) skills.add("lark-base");
+  if (/doc|docs|docx/.test(normalized) || hasAny(normalized, DOC_HINTS) || hasTokenHint(tokenSet, DOC_HINTS)) skills.add("lark-doc");
+  if (/sheet|sheets|spreadsheet/.test(normalized) || hasAny(normalized, SHEETS_HINTS) || hasTokenHint(tokenSet, SHEETS_HINTS)) skills.add("lark-sheets");
+  if (/calendar|meeting|room|freebusy/.test(normalized) || hasAny(normalized, CALENDAR_HINTS) || hasTokenHint(tokenSet, CALENDAR_HINTS)) skills.add("lark-calendar");
+  if (/drive|file|folder|upload|download|import|markdown|word|excel|xlsx|csv/.test(normalized) || hasAny(normalized, DRIVE_HINTS) || hasTokenHint(tokenSet, DRIVE_HINTS)) skills.add("lark-drive");
+  if (/task|todo/.test(normalized) || hasAny(normalized, TASK_HINTS) || hasTokenHint(tokenSet, TASK_HINTS)) skills.add("lark-task");
 
   return skills;
 }
@@ -660,6 +1153,18 @@ const SEND_MESSAGE_HINTS = [
   "\u5728\u7fa4\u91cc\u53d1\u6d88\u606f",
 ];
 
+const READ_CHAT_MESSAGE_HINTS = [
+  "\u8bfb\u53d6\u7fa4",
+  "\u8bfb\u7fa4",
+  "\u7fa4\u7684\u4fe1\u606f",
+  "\u7fa4\u91cc\u7684\u4fe1\u606f",
+  "\u7fa4\u91cc\u4fe1\u606f",
+  "\u7fa4\u804a\u8bb0\u5f55",
+  "\u804a\u5929\u8bb0\u5f55",
+  "\u5386\u53f2\u6d88\u606f",
+  "\u641c\u7d22\u6d88\u606f",
+];
+
 const EVENT_HINTS = [
   "\u957f\u8fde\u63a5",
   "\u4e8b\u4ef6",
@@ -677,11 +1182,24 @@ const BASE_HINTS = ["\u591a\u7ef4", "\u5b57\u6bb5", "\u8bb0\u5f55", "\u8868\u683
 const DOC_HINTS = ["\u6587\u6863", "\u4e91\u6587\u6863"];
 const SHEETS_HINTS = ["\u516c\u5f0f", "\u5355\u5143\u683c", "\u7535\u5b50\u8868\u683c"];
 const CALENDAR_HINTS = ["\u65e5\u5386", "\u4f1a\u8bae", "\u4f1a\u8bae\u5ba4", "\u65e5\u7a0b"];
-const DRIVE_HINTS = ["\u4e91\u7a7a\u95f4", "\u6587\u4ef6", "\u6587\u4ef6\u5939", "\u4e0a\u4f20", "\u4e0b\u8f7d"];
+const DRIVE_HINTS = ["\u4e91\u7a7a\u95f4", "\u6587\u4ef6", "\u6587\u4ef6\u5939", "\u4e0a\u4f20", "\u4e0b\u8f7d", "\u5bfc\u5165"];
+const DRIVE_IMPORT_HINTS = [
+  "\u5bfc\u5165",
+  "\u4e0a\u4f20",
+  "\u672c\u5730\u6587\u4ef6",
+  "\u672c\u5730",
+  "\u6587\u4ef6\u5bfc\u5165",
+  "\u6587\u4ef6\u8f6c",
+  "\u4e91\u7a7a\u95f4",
+];
 const TASK_HINTS = ["\u5f85\u529e", "\u4efb\u52a1"];
 
 function hasAny(text, terms) {
   return terms.some((term) => text.includes(term));
+}
+
+function hasTokenHint(tokenSet, terms) {
+  return terms.some((term) => tokenSet.has(term));
 }
 function buildSuggestedActions(results) {
   const actions = [
@@ -710,9 +1228,43 @@ function inferNextCommand(results, queryText = "") {
 
 function hasSendMessageIntent(text) {
   const normalized = normalizeSearchText(text);
+  const tokenSet = new Set(tokenize(normalized));
   return (
     /send|messages-send|\+messages-send|\+send/.test(normalized) ||
-    hasAny(normalized, SEND_MESSAGE_HINTS)
+    /发.{0,6}消息|发送.{0,6}消息|群.{0,6}发.{0,6}消息/.test(normalized) ||
+    hasAny(normalized, SEND_MESSAGE_HINTS) ||
+    hasTokenHint(tokenSet, ["消息", "发送消息", "发消息", "群发", "群聊", "飞书群"])
+  );
+}
+
+function chatMessageIntentBonus(queryText, chunk) {
+  if (!hasReadChatMessageIntent(queryText)) return 0;
+  const skillName = chunk.metadata?.skillName || "";
+  const haystack = [chunk.title, chunk.source, chunk.searchText].filter(Boolean).join("\n").toLowerCase();
+
+  if (skillName === "lark-im" && /chat|message|messages|history|search|im\s/.test(haystack)) return 4;
+  if (skillName === "lark-event" && /event|subscribe|websocket|receive/.test(haystack)) return 1.2;
+  if (skillName === "lark-contact") return -3;
+  return 0;
+}
+
+function hasReadChatMessageIntent(text) {
+  const normalized = normalizeSearchText(text);
+  const tokenSet = new Set(tokenize(normalized));
+  return (
+    /read.*chat|chat.*message|message.*history|search.*message/.test(normalized) ||
+    hasAny(normalized, READ_CHAT_MESSAGE_HINTS) ||
+    hasTokenHint(tokenSet, ["消息", "历史消息", "聊天记录", "群聊", "群消息"])
+  );
+}
+
+function hasDriveImportIntent(text) {
+  const normalized = normalizeSearchText(text);
+  const tokenSet = new Set(tokenize(normalized));
+  return (
+    /drive|import|upload|markdown|word|excel|xlsx|csv/.test(normalized) ||
+    hasAny(normalized, DRIVE_IMPORT_HINTS) ||
+    hasTokenHint(tokenSet, DRIVE_IMPORT_HINTS)
   );
 }
 
@@ -737,11 +1289,11 @@ function splitDocContent(text, maxLength) {
   const raw = String(text || "").trim();
   if (!raw) return [];
   const sections = raw.split(/\n(?=#{1,3}\s)|\n---+\n/g).map((part) => part.trim()).filter(Boolean);
-  if (!sections.length) return splitLongText(raw, maxLength);
+  if (!sections.length) return splitLongText(raw, maxLength, { overlapParagraphs: 1 });
 
   const parts = [];
   for (const section of sections) {
-    parts.push(...splitLongText(section, maxLength));
+    parts.push(...splitLongText(section, maxLength, { overlapParagraphs: 1 }));
   }
   return parts;
 }

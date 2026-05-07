@@ -18,12 +18,17 @@ function defaultCardView() {
   return process.env.LARK_CARD_VIEW || "release";
 }
 
+function defaultAnalysisMode() {
+  return process.env.LARK_CLI_ANALYSIS_MODE || "background";
+}
+
 function parseArgs(argv) {
   const args = {
     knowledgeSource: "local",
     knowledge: "knowledge/lark-cli-errors.json",
     retrieverSourcesFile: "",
     retrieverDocsFile: "",
+    retrieverMode: process.env.LARK_RETRIEVER_MODE || "keyword",
     larkCliTimeoutMs: 30000,
     commandTimeoutMs: 120000,
     debugLarkCli: false,
@@ -53,6 +58,7 @@ function parseArgs(argv) {
     llmModel: "",
     llmTimeoutMs: 20000,
     llmTemperature: 0.2,
+    analysisMode: defaultAnalysisMode(),
   };
 
   for (let i = 2; i < argv.length; i++) {
@@ -66,6 +72,7 @@ function parseArgs(argv) {
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
     else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
     else if (key === "--retriever-docs-file" && value) args.retrieverDocsFile = argv[++i];
+    else if (key === "--retriever-mode" && value) args.retrieverMode = argv[++i];
     else if (key === "--lark-cli-timeout-ms" && value) args.larkCliTimeoutMs = Number(argv[++i]);
     else if (key === "--command-timeout-ms" && value) args.commandTimeoutMs = Number(argv[++i]);
     else if (key === "--debug-lark-cli") args.debugLarkCli = true;
@@ -99,6 +106,7 @@ function parseArgs(argv) {
     else if (key === "--llm-model" && value) args.llmModel = argv[++i];
     else if (key === "--llm-timeout-ms" && value) args.llmTimeoutMs = Number(argv[++i]);
     else if (key === "--llm-temperature" && value) args.llmTemperature = Number(argv[++i]);
+    else if (key === "--analysis-mode" && value) args.analysisMode = argv[++i];
   }
 
   return args;
@@ -110,13 +118,22 @@ async function main() {
   const retriever = await buildKnowledgeRetriever(options, kb);
   const session = {
     cwd: options.cwd || process.cwd(),
+    analysis: createAnalysisState(options),
   };
 
   console.log(`[cli-watch] knowledge rules: ${kb.items.length}`);
   console.log(`[cli-watch] retriever chunks: ${retriever.meta.chunkCount}`);
+  if (retriever.meta.vector) {
+    console.log(
+      `[cli-watch] retriever vector: enabled=${Boolean(retriever.meta.vector.enabled)} embedded=${retriever.meta.vector.embeddedCount || 0}/${retriever.meta.vector.chunkCount || retriever.meta.chunkCount}`,
+    );
+    if (retriever.meta.vector.error) console.log(`[cli-watch] retriever vector error: ${retriever.meta.vector.error}`);
+  }
+  console.log(`[cli-watch] analysis mode: ${session.analysis.mode}`);
 
   if (options.command) {
     const result = await runCommandAndMaybeAnalyze(options.command, { kb, retriever, options, session });
+    await waitForPendingAnalyses(session.analysis);
     process.exit(options.preserveExitCode ? result.exitCode : 0);
   }
 
@@ -150,6 +167,7 @@ async function runInteractiveShell({ kb, retriever, options, session }) {
       }
       return;
     } finally {
+      await waitForPendingAnalyses(session.analysis);
       rl.close();
     }
   }
@@ -188,6 +206,7 @@ async function runInteractiveShell({ kb, retriever, options, session }) {
       await runCommandAndMaybeAnalyze(command, { kb, retriever, options, session });
     }
   } finally {
+    await waitForPendingAnalyses(session.analysis);
     rl.close();
   }
 }
@@ -204,6 +223,80 @@ async function runCommandAndMaybeAnalyze(command, { kb, retriever, options, sess
 
   const event = buildCliEvent({ command, execution, options, session });
   console.log(`[cli-watch] candidate: exit=${execution.exitCode} ${command.slice(0, 120)}`);
+
+  if (session.analysis.mode === "background") {
+    const jobId = enqueueAnalysisJob({
+      event,
+      kb,
+      retriever,
+      options,
+      analysis: session.analysis,
+    });
+    console.log(`[cli-watch] queued analysis #${jobId} (${session.analysis.mode}).`);
+    return execution;
+  }
+
+  await runAnalysisJob({
+    jobId: 0,
+    event,
+    kb,
+    retriever,
+    options,
+    prefix: "[cli-watch]",
+  });
+
+  return execution;
+}
+
+function createAnalysisState(options) {
+  return {
+    mode: normalizeAnalysisMode(options.analysisMode),
+    nextJobId: 1,
+    pending: new Set(),
+    tail: Promise.resolve(),
+  };
+}
+
+function normalizeAnalysisMode(value) {
+  return String(value || "").toLowerCase() === "blocking" ? "blocking" : "background";
+}
+
+function enqueueAnalysisJob({ event, kb, retriever, options, analysis }) {
+  const jobId = analysis.nextJobId++;
+  let task;
+  
+  task = analysis.tail
+    .then(() =>
+      runAnalysisJob({
+        jobId,
+        event,
+        kb,
+        retriever,
+        options,
+        prefix: `[cli-watch][#${jobId}]`,
+      }),
+    )
+    .catch((error) => {
+      console.error(`[cli-watch][#${jobId}] analysis failed: ${error.message}`);
+    })
+    .finally(() => {
+      analysis.pending.delete(task);
+    });
+
+  analysis.pending.add(task);
+  analysis.tail = task.catch(() => {});
+  return jobId;
+}
+
+async function waitForPendingAnalyses(analysis) {
+  const pending = [...(analysis?.pending || [])];
+  if (!pending.length) return;
+  console.log(`[cli-watch] waiting for ${pending.length} background analysis job(s) to finish...`);
+  await Promise.allSettled(pending);
+}
+
+async function runAnalysisJob({ jobId, event, kb, retriever, options, prefix }) {
+  if (jobId > 0) console.log(`${prefix} start analysis`);
   const result = await processKnowledgeEvent({
     event,
     kb,
@@ -213,14 +306,14 @@ async function runCommandAndMaybeAnalyze(command, { kb, retriever, options, sess
   });
 
   if (result.matched && result.picked?._retrieval) {
-    console.log(`[cli-watch] retrieved ${result.picked._retrieval.results.length} knowledge chunk(s)`);
+    console.log(`${prefix} retrieved ${result.picked._retrieval.results.length} knowledge chunk(s)`);
   }
 
   if (result.pushResult) {
-    console.log(`[cli-watch] push -> ${result.pushResult.status}: ${result.pushResult.summary}`);
+    console.log(`${prefix} push -> ${result.pushResult.status}: ${result.pushResult.summary}`);
   }
 
-  return execution;
+  return result;
 }
 
 function runShellCommand(command, options, session) {
@@ -285,6 +378,7 @@ function shouldAnalyzeCommand({ command, execution, options }) {
   if (options.triggerAll) return true;
   if (execution.exitCode !== 0) return true;
   if (hasStrongSignal(combined)) return true;
+  if (hasRecoverableCliGuidance(command, execution)) return true;
   return Boolean(options.triggerOnSuccess && hasWatchedSuccessPattern(command));
 }
 
@@ -313,6 +407,32 @@ function hasWatchedSuccessPattern(command) {
     /lark-cli\s+[a-z0-9_-]+\s+--help\b/,
     /lark-cli\s+[a-z0-9_-]+\s+\+[a-z0-9_-]+\s+--help\b/,
   ].some((pattern) => pattern.test(normalized));
+}
+
+function hasRecoverableCliGuidance(command, execution) {
+  const stdout = String(execution.stdout || "");
+  const normalizedCommand = String(command || "").trim().toLowerCase();
+  if (!normalizedCommand.startsWith("lark-cli ")) return false;
+
+  const hasGuidanceOutput =
+    stdout.includes("Available Commands:") ||
+    stdout.includes('Use "lark-cli') ||
+    stdout.includes("Usage:");
+  if (!hasGuidanceOutput) return false;
+
+  if (/\s\+[a-z0-9_-]+/.test(normalizedCommand)) return false;
+
+  const parts = normalizedCommand.split(/\s+/).filter(Boolean);
+  if (parts.length < 3) return false;
+
+  const lastPart = parts[parts.length - 1];
+  const secondLastPart = parts[parts.length - 2] || "";
+  const looksLikeBareSubcommand =
+    !lastPart.startsWith("+") &&
+    !lastPart.startsWith("-") &&
+    secondLastPart !== "lark-cli";
+
+  return looksLikeBareSubcommand;
 }
 
 function buildCliEvent({ command, execution, options, session }) {

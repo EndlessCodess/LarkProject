@@ -11,6 +11,7 @@ function parseArgs(argv) {
     skipLlm: false,
     summaryTable: true,
     llmTimeoutMs: 90000,
+    retrieverMode: process.env.LARK_RETRIEVER_MODE || "keyword",
     output: "tmp/evaluation-suite-results.json",
     markdown: "tmp/evaluation-suite-report.md",
   };
@@ -22,6 +23,7 @@ function parseArgs(argv) {
     else if (key === "--skip-llm") args.skipLlm = true;
     else if (key === "--no-summary-table") args.summaryTable = false;
     else if (key === "--llm-timeout-ms" && value) args.llmTimeoutMs = Number(argv[++i]);
+    else if (key === "--retriever-mode" && value) args.retrieverMode = argv[++i];
     else if (key === "--output" && value) args.output = argv[++i];
     else if (key === "--markdown" && value) args.markdown = argv[++i];
   }
@@ -86,6 +88,8 @@ function buildSuites(options) {
     "--quiet",
     ...(options.summaryTable ? ["--summary-table"] : []),
     ...(options.showTop3 ? ["--show-top3"] : []),
+    "--retriever-mode",
+    options.retrieverMode,
   ];
   const suites = [
     {

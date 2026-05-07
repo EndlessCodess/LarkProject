@@ -22,6 +22,7 @@ function parseArgs(argv) {
     knowledgeSource: "local",
     knowledge: "knowledge/lark-cli-errors.json",
     retrieverSourcesFile: process.env.LARK_RETRIEVER_SOURCES_FILE || "knowledge/lark-cloud-knowledge.json",
+    retrieverMode: process.env.LARK_RETRIEVER_MODE || "keyword",
     output: "tmp/evaluation-results.json",
     markdown: "tmp/evaluation-report.md",
     composeMode: defaultComposeMode(),
@@ -46,6 +47,7 @@ function parseArgs(argv) {
     else if (key === "--knowledge" && value) args.knowledge = argv[++i];
     else if (key === "--knowledge-source" && value) args.knowledgeSource = argv[++i];
     else if (key === "--retriever-sources-file" && value) args.retrieverSourcesFile = argv[++i];
+    else if (key === "--retriever-mode" && value) args.retrieverMode = argv[++i];
     else if (key === "--output" && value) args.output = argv[++i];
     else if (key === "--markdown" && value) args.markdown = argv[++i];
     else if (key === "--compose-mode" && value) args.composeMode = argv[++i];
@@ -78,6 +80,12 @@ async function main() {
   console.log(`[eval] cases: ${cases.length}`);
   console.log(`[eval] knowledge rules: ${kb.items.length}`);
   console.log(`[eval] retriever chunks: ${retriever.meta.chunkCount}`);
+  if (retriever.meta.vector) {
+    console.log(
+      `[eval] retriever vector: enabled=${Boolean(retriever.meta.vector.enabled)} model=${retriever.meta.vector.model || "<none>"} embedded=${retriever.meta.vector.embeddedCount || 0}/${retriever.meta.vector.chunkCount || retriever.meta.chunkCount}`,
+    );
+    if (retriever.meta.vector.error) console.log(`[eval] retriever vector error: ${retriever.meta.vector.error}`);
+  }
 
   for (const testCase of cases) {
     const start = Date.now();
@@ -170,6 +178,8 @@ function evaluateCase(testCase, result, durationMs) {
         source: item.source,
         score: item.score,
         skillName: item.metadata?.skillName || "",
+        retrieverMode: item.metadata?.retrieverMode || "",
+        retrieverScore: item.metadata?.retrieverScore || null,
       })),
       composeMode: decision?.composition?.mode || "",
       composeModel: decision?.composition?.model || decision?.composition?.llmAttempt?.model || "",
@@ -222,6 +232,7 @@ function buildReport({ options, cases, records, kb, retriever, durationMs }) {
       composeMode: options.composeMode,
       liveHelp: options.liveHelp,
       retrieverSourcesFile: options.retrieverSourcesFile,
+      retrieverMode: options.retrieverMode,
       showTop3: Boolean(options.showTop3),
     },
     inventory: {
@@ -312,7 +323,7 @@ function renderMarkdownReport(report) {
     lines.push(`- ${item.pass ? "PASS" : "FAIL"} ${item.id}: ${item.actual.matchKind}, ${item.actual.ruleId || item.actual.category || "no-rule"}, compose=${item.actual.composeMode || "n/a"}`);
     if (report.options.showTop3 && item.actual.topRetrieval.length) {
       for (const [index, hit] of item.actual.topRetrieval.entries()) {
-        lines.push(`  - Top${index + 1}: ${hit.title} | ${hit.skillName || "unknown"} | score=${formatScore(hit.score)} | ${hit.source}`);
+        lines.push(`  - Top${index + 1}: ${hit.title} | ${hit.skillName || "unknown"} | score=${formatScore(hit.score)}${formatRetrieverScore(hit)} | ${hit.source}`);
       }
     }
   }
@@ -359,7 +370,7 @@ function printTop3(record) {
 
   for (const [index, hit] of record.actual.topRetrieval.entries()) {
     console.log(
-      `[eval][top${index + 1}] ${record.id} ${hit.title} | skill=${hit.skillName || "unknown"} | score=${formatScore(hit.score)} | source=${hit.source}`,
+      `[eval][top${index + 1}] ${record.id} ${hit.title} | skill=${hit.skillName || "unknown"} | score=${formatScore(hit.score)}${formatRetrieverScore(hit)} | source=${hit.source}`,
     );
   }
 }
@@ -464,6 +475,12 @@ function formatScore(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return "";
   return number.toFixed(4);
+}
+
+function formatRetrieverScore(hit) {
+  if (!hit?.retrieverScore) return "";
+  const score = hit.retrieverScore;
+  return ` | ${hit.retrieverMode || "hybrid"} k=${formatScore(score.keyword)} s=${formatScore(score.semantic)} r=${formatScore(score.routeBonus)}`;
 }
 
 main().catch((error) => {
